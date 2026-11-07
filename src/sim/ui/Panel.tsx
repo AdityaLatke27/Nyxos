@@ -1,19 +1,23 @@
-import type { SiteInfo } from '../data/types'
+import type { Feature, SiteInfo } from '../data/types'
+import type { CpuTerrain } from '../terrain/cpuTerrain'
 import { fmtDuration, fmtLat, fmtLon } from '../state/frame'
 import { useSim } from '../state/store'
 import type { Series, SiteNow } from '../analysis/siteAnalysis'
 import { nextCrossing } from '../analysis/siteAnalysis'
 import SiteChart from './SiteChart'
+import CraterOverview from './CraterOverview'
 
 interface Props {
   sites: SiteInfo[]
+  features: Feature[]
+  terrain: CpuTerrain
   current: { name: string; lat: number; lon: number; heightKm: number; hasTerrain: boolean } | null
   now: SiteNow | null
   series: Series | null
   busy: boolean
 }
 
-export default function Panel({ sites, current, now, series, busy }: Props) {
+export default function Panel({ sites, features, terrain, current, now, series, busy }: Props) {
   const s = useSim()
   const timeMs = s.startDay + s.offsetHours * 3.6e6
   const standing = s.view === 'stand'
@@ -82,6 +86,8 @@ export default function Panel({ sites, current, now, series, busy }: Props) {
           Stand here
         </button>
       </section>
+
+      <CraterOverview features={features} terrain={terrain} point={current} hasTerrain={!!current?.hasTerrain} />
 
       <section className="site">
         <h2>{standing ? 'Standing at' : 'Selected site'}</h2>

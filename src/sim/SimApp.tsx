@@ -263,11 +263,11 @@ export default function SimApp() {
           <div className="sim-compute">Computing 30-day horizon map · {Math.round(heat.progress * 100)}%</div>
         )}
       </div>
-      {assets && (
+      {assets && terrain && (
         <>
           <TimeBar />
           <ShowMenu />
-          <Panel sites={assets.sites} current={current} now={now} series={series} busy={busy} />
+          <Panel sites={assets.sites} features={assets.features} terrain={terrain} current={current} now={now} series={series} busy={busy} />
         </>
       )}
     </div>
