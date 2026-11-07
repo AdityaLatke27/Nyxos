@@ -164,6 +164,44 @@ export class CpuTerrain {
     return this.heightAt(dirFromLatLon(latDeg, lonDeg), lodKm)
   }
 
+  /**
+   * Cell size (km) of the finest DEM level that fully covers a point: the resolution the
+   * heights there really come from. Mirrors the level selection in heightAt.
+   */
+  resolutionKmAt(latDeg: number, lonDeg: number): number {
+    const p = dirFromLatLon(latDeg, lonDeg)
+    const lat = Math.asin(Math.max(-1, Math.min(1, p[1])))
+    const lon = Math.atan2(p[0], p[2])
+    const covered = (u: number, v: number) => edgeWeight(u, v) >= 0.999
+    let best = this.assets.moon.global.texelKm
+
+    for (const level of this.nearSide) {
+      const u = (lon - level.info.y) / (2 * level.info.z) + 0.5
+      const v = (level.info.x - lat) / (2 * level.info.z) + 0.5
+      if (covered(u, v)) best = Math.min(best, level.texelKm)
+    }
+    if (p[1] < -0.85) {
+      const d = 1 - p[1]
+      const X = (2 * R_KM * p[0]) / d
+      const Y = (2 * R_KM * p[2]) / d
+      for (const level of [this.assets.poleWide, this.assets.poleFine]) {
+        if (covered(X / (2 * level.halfExtentKm) + 0.5, Y / (2 * level.halfExtentKm) + 0.5)) best = Math.min(best, level.cellKm)
+      }
+    }
+    if (this.site && this.siteFrame) {
+      const f = this.siteFrame
+      const cu = dot(p, f.up)
+      if (cu > 0.9) {
+        const x = (R_KM * dot(p, f.east)) / cu
+        const y = (R_KM * dot(p, f.north)) / cu
+        for (const patch of [this.site.mid, this.site.near]) {
+          if (covered(x / (2 * patch.halfExtentKm) + 0.5, 0.5 - y / (2 * patch.halfExtentKm))) best = Math.min(best, patch.cellKm)
+        }
+      }
+    }
+    return best
+  }
+
   /** Fraction of the solar (or any) disc visible from a surface point, by ray-marching the terrain. */
   discVisibility(p: V3, dir: V3, discRadiusDeg: number, eyeKm = 0.002): number {
     const R = R_KM
