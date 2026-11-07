@@ -1,0 +1,57 @@
+{
+  "radiusKm": 1737.4,
+  "global": {
+    "file": "height_global.webp",
+    "width": 4096,
+    "height": 2048,
+    "hMin": -9.043684959411621,
+    "hMax": 122.02631504058837,
+    "source": "LRO LOLA LDEM_16"
+  },
+  "patches": [
+    {
+      "file": "height_l0.webp",
+      "width": 3072,
+      "height": 3072,
+      "hMin": -1.9252225160598755,
+      "hMax": 14.458527483940124,
+      "ppd": 512,
+      "latCenter": 0,
+      "lonCenter": 0,
+      "extentDeg": 6,
+      "source": "SLDEM2015 (LOLA + SELENE TC)"
+    },
+    {
+      "file": "height_l1.webp",
+      "width": 2048,
+      "height": 2048,
+      "hMin": -3.2258546352386475,
+      "hMax": 29.54164536476135,
+      "ppd": 128,
+      "latCenter": 0,
+      "lonCenter": 0,
+      "extentDeg": 16,
+      "source": "SLDEM2015 (LOLA + SELENE TC)"
+    },
+    {
+      "file": "height_l2.webp",
+      "width": 2048,
+      "height": 2048,
+      "hMin": -4.959875106811523,
+      "hMax": 60.57512489318847,
+      "ppd": 32,
+      "latCenter": 0,
+      "lonCenter": 0,
+      "extentDeg": 64,
+      "source": "LRO LOLA LDEM_64"
+    }
+  ],
+  "color": {
+    "8k": "color_8k.webp",
+    "4k": "color_4k.webp"
+  },
+  "stars": {
+    "8k": "stars_8k.webp",
+    "4k": "stars_4k.webp"
+  }
+}

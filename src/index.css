@@ -1,0 +1,66 @@
+@import '@fontsource/orbitron/500.css';
+@import '@fontsource/orbitron/600.css';
+@import '@fontsource/orbitron/700.css';
+@import '@fontsource/space-grotesk/400.css';
+@import '@fontsource/space-grotesk/500.css';
+
+:root {
+  color-scheme: dark;
+  /* quiet glass: enough tint to read over a sunlit Moon, never louder than the scene */
+  --glass-bg: rgba(12, 17, 28, 0.42);
+  --glass-bg-strong: rgba(10, 14, 24, 0.58);
+  --glass-border: rgba(255, 255, 255, 0.075);
+  --glass-blur: blur(18px) saturate(135%);
+  --glass-shadow: 0 10px 34px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  --glass-hover: rgba(255, 255, 255, 0.055);
+  --accent: #6fc3ff;
+  --accent-soft: rgba(111, 195, 255, 0.14);
+  --rail-left: 14px;
+  --rail-width: 76px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #030610;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.app-root {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #030610;
+}
+
+.canvas-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  touch-action: none;
+}
+
+.curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: #000;
+  pointer-events: none;
+}
+
+button {
+  font-family: inherit;
+}

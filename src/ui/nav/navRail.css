@@ -1,0 +1,126 @@
+.nav-rail {
+  position: fixed;
+  z-index: 16;
+  left: var(--rail-left);
+  top: 0;
+  bottom: 0;
+  height: fit-content;
+  margin: auto 0;
+  width: var(--rail-width);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 7px 6px;
+  border-radius: 18px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.nav-rail.intro {
+  opacity: 0;
+}
+
+.nav-item {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  padding: 10px 0 8px;
+  border-radius: 12px;
+  color: rgba(214, 226, 244, 0.66);
+  text-decoration: none;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  transition: background 0.18s, color 0.18s;
+}
+
+.nav-item svg {
+  width: 22px;
+  height: 22px;
+}
+
+a.nav-item:hover {
+  background: var(--glass-hover);
+  color: #f2f7ff;
+}
+
+.nav-item.on {
+  background: var(--accent-soft);
+  color: #f2f7ff;
+}
+
+.nav-item.on::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(111, 195, 255, 0.6);
+}
+
+.nav-item.soon {
+  color: rgba(190, 205, 228, 0.34);
+  cursor: default;
+}
+
+.nav-item:focus-visible {
+  outline: 2px solid #8fd0ff;
+  outline-offset: 1px;
+}
+
+/* full name on hover */
+.nav-item[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: calc(100% + 14px);
+  top: 50%;
+  transform: translate(-4px, -50%);
+  padding: 0.38rem 0.65rem;
+  border-radius: 8px;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  letter-spacing: 0.01em;
+  color: #e6edf8;
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.nav-item[data-tip]:hover::after,
+.nav-item[data-tip]:focus-visible::after {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+@media (max-width: 760px) {
+  .nav-rail {
+    top: 10px;
+    bottom: auto;
+    left: auto;
+    right: 10px;
+    margin: 0;
+    width: auto;
+    flex-direction: row;
+    padding: 4px;
+    border-radius: 14px;
+  }
+  .nav-item {
+    padding: 7px 9px;
+  }
+  .nav-item > span,
+  .nav-item[data-tip]::after,
+  .nav-item.on::before {
+    display: none;
+  }
+}

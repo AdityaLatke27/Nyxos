@@ -1,0 +1,485 @@
+[
+ {
+  "id": "im1",
+  "name": "IM-1 Odysseus",
+  "lat": -80.13,
+  "lon": 1.44,
+  "group": "CLPS",
+  "source": "LOLA LDEM_75S_30M / LDEM_75S_120M",
+  "near": {
+   "file": "sites/im1_near.webp",
+   "size": 1024,
+   "hMin": 1.731741189956665,
+   "hMax": 8.285241189956665,
+   "cellKm": 0.02
+  },
+  "mid": {
+   "file": "sites/im1_mid.webp",
+   "size": 1024,
+   "hMin": -1.9029465913772583,
+   "hMax": 30.86455340862274,
+   "cellKm": 0.12
+  },
+  "photo": "sites/im1_photo.jpg"
+ },
+ {
+  "id": "im2",
+  "name": "IM-2 Athena",
+  "lat": -84.7906,
+  "lon": 29.1957,
+  "group": "CLPS",
+  "source": "LOLA LDEM_80S_20M / LDEM_75S_120M",
+  "near": {
+   "file": "sites/im2_near.webp",
+   "size": 1024,
+   "hMin": 4.53000020980835,
+   "hMax": 11.08350020980835,
+   "cellKm": 0.02
+  },
+  "mid": {
+   "file": "sites/im2_mid.webp",
+   "size": 1024,
+   "hMin": -3.5858163833618164,
+   "hMax": 29.181683616638182,
+   "cellKm": 0.12
+  },
+  "photo": "sites/im2_photo.jpg"
+ },
+ {
+  "id": "haworth",
+  "name": "Haworth",
+  "lat": -86.7,
+  "lon": -23.7,
+  "group": "Artemis III region",
+  "source": "LOLA LDEM_80S_20M / LDEM_75S_120M",
+  "near": {
+   "file": "sites/haworth_near.webp",
+   "size": 1024,
+   "hMin": -0.06810556352138519,
+   "hMax": 6.4853944364786145,
+   "cellKm": 0.02
+  },
+  "mid": {
+   "file": "sites/haworth_mid.webp",
+   "size": 1024,
+   "hMin": -5.011449337005615,
+   "hMax": 27.756050662994383,
+   "cellKm": 0.12
+  },
+  "photo": "sites/haworth_photo.jpg"
+ },
+ {
+  "id": "malapert-massif",
+  "name": "Malapert Massif",
+  "lat": -86.0,
+  "lon": 0.3,
+  "group": "Artemis III region",
+  "source": "LOLA LDEM_80S_20M / LDEM_75S_120M",
+  "near": {
+   "file": "sites/malapert-massif_near.webp",
+   "size": 1024,
+   "hMin": 1.0383961200714111,
+   "hMax": 7.591896120071411,
+   "cellKm": 0.02
+  },
+  "mid": {
+   "file": "sites/malapert-massif_mid.webp",
+   "size": 1024,
+   "hMin": -4.020040512084961,
+   "hMax": 28.747459487915037,
+   "cellKm": 0.12
+  },
+  "photo": "sites/malapert-massif_photo.jpg"
+ },
+ {
+  "id": "mons-mouton-plateau",
+  "name": "Mons Mouton Plateau",
+  "lat": -84.3,
+  "lon": 30.6,
+  "group": "Artemis III region",
+  "source": "LOLA LDEM_80S_20M / LDEM_75S_120M",
+  "near": {
+   "file": "sites/mons-mouton-plateau_near.webp",
+   "size": 1024,
+   "hMin": 3.3872292041778564,
+   "hMax": 9.940729204177856,
+   "cellKm": 0.02
+  },
+  "mid": {
+   "file": "sites/mons-mouton-plateau_mid.webp",
+   "size": 1024,
+   "hMin": -4.110468864440918,
+   "hMax": 28.65703113555908,
+   "cellKm": 0.12
+  },
+  "photo": "sites/mons-mouton-plateau_photo.jpg"
+ },
+ {
+  "id": "nobile-rim-2",
+  "name": "Nobile Rim 2",
+  "lat": -83.9,
+  "lon": 58.7,
+  "group": "Artemis III region",
+  "source": "LOLA LDEM_80S_20M / LDEM_75S_120M",
+  "near": {
+   "file": "sites/nobile-rim-2_near.webp",
+   "size": 1024,
+   "hMin": -1.1856542825698853,
+   "hMax": 5.367845717430114,
+   "cellKm": 0.02
+  },
+  "mid": {
+   "file": "sites/nobile-rim-2_mid.webp",
+   "size": 1024,
+   "hMin": -4.220563888549805,
+   "hMax": 28.546936111450194,
+   "cellKm": 0.12
+  },
+  "photo": "sites/nobile-rim-2_photo.jpg"
+ },
+ {
+  "id": "cabeus-b-peak",
+  "name": "Peak near Cabeus B",
+  "lat": -83.6,
+  "lon": -68.8,
+  "group": "Artemis III region",
+  "source": "LOLA LDEM_80S_20M / LDEM_75S_120M",
+  "near": {
+   "file": "sites/cabeus-b-peak_near.webp",
+   "size": 1024,
+   "hMin": 0.042529456317424774,
+   "hMax": 6.596029456317424,
+   "cellKm": 0.02
+  },
+  "mid": {
+   "file": "sites/cabeus-b-peak_mid.webp",
+   "size": 1024,
+   "hMin": -4.962224960327148,
+   "hMax": 27.80527503967285,
+   "cellKm": 0.12
+  },
+  "photo": "sites/cabeus-b-peak_photo.jpg"
+ },
+ {
+  "id": "mons-mouton",
+  "name": "Mons Mouton (site MMO01)",
+  "lat": -85.416,
+  "lon": 31.8506,
+  "group": "Candidate site",
+  "source": "LOLA LDEM_80S_20M / LDEM_75S_120M",
+  "near": {
+   "file": "sites/mons-mouton_near.webp",
+   "size": 1024,
+   "hMin": 3.146193504333496,
+   "hMax": 9.699693504333496,
+   "cellKm": 0.02
+  },
+  "mid": {
+   "file": "sites/mons-mouton_mid.webp",
+   "size": 1024,
+   "hMin": -2.7135937213897705,
+   "hMax": 30.053906278610228,
+   "cellKm": 0.12
+  },
+  "photo": "sites/mons-mouton_photo.jpg"
+ },
+ {
+  "id": "nobile-rim-1",
+  "name": "Nobile Rim 1 (site NR101)",
+  "lat": -85.295,
+  "lon": 36.9168,
+  "group": "Candidate site",
+  "source": "LOLA LDEM_80S_20M / LDEM_75S_120M",
+  "near": {
+   "file": "sites/nobile-rim-1_near.webp",
+   "size": 1024,
+   "hMin": 2.2140979766845703,
+   "hMax": 8.76759797668457,
+   "cellKm": 0.02
+  },
+  "mid": {
+   "file": "sites/nobile-rim-1_mid.webp",
+   "size": 1024,
+   "hMin": -3.0054643154144287,
+   "hMax": 29.76203568458557,
+   "cellKm": 0.12
+  },
+  "photo": "sites/nobile-rim-1_photo.jpg"
+ },
+ {
+  "id": "de-gerlache-rim-2",
+  "name": "de Gerlache Rim 2 (site dGR2_K2023)",
+  "lat": -88.45,
+  "lon": -67.8591,
+  "group": "Candidate site",
+  "source": "LOLA LDEM_80S_20M / LDEM_75S_120M",
+  "near": {
+   "file": "sites/de-gerlache-rim-2_near.webp",
+   "size": 1024,
+   "hMin": -1.1832778453826904,
+   "hMax": 5.370222154617309,
+   "cellKm": 0.02
+  },
+  "mid": {
+   "file": "sites/de-gerlache-rim-2_mid.webp",
+   "size": 1024,
+   "hMin": -4.37691068649292,
+   "hMax": 28.39058931350708,
+   "cellKm": 0.12
+  },
+  "photo": "sites/de-gerlache-rim-2_photo.jpg"
+ },
+ {
+  "id": "slater-plain",
+  "name": "Slater Plain (site SP07)",
+  "lat": -87.1306,
+  "lon": 127.857,
+  "group": "Candidate site",
+  "source": "LOLA LDEM_80S_20M / LDEM_75S_120M",
+  "near": {
+   "file": "sites/slater-plain_near.webp",
+   "size": 1024,
+   "hMin": -1.327771782875061,
+   "hMax": 5.225728217124939,
+   "cellKm": 0.02
+  },
+  "mid": {
+   "file": "sites/slater-plain_mid.webp",
+   "size": 1024,
+   "hMin": -4.55153226852417,
+   "hMax": 28.21596773147583,
+   "cellKm": 0.12
+  },
+  "photo": "sites/slater-plain_photo.jpg"
+ },
+ {
+  "id": "shackleton",
+  "name": "Shackleton crater",
+  "lat": -89.67,
+  "lon": 129.78,
+  "group": "Landmark",
+  "source": "LOLA LDEM_80S_20M / LDEM_75S_120M",
+  "near": {
+   "file": "sites/shackleton_near.webp",
+   "size": 1024,
+   "hMin": -2.871736764907837,
+   "hMax": 3.6817632350921627,
+   "cellKm": 0.02
+  },
+  "mid": {
+   "file": "sites/shackleton_mid.webp",
+   "size": 1024,
+   "hMin": -4.244196891784668,
+   "hMax": 28.52330310821533,
+   "cellKm": 0.12
+  },
+  "photo": "sites/shackleton_photo.jpg"
+ },
+ {
+  "id": "connecting-ridge-cr1",
+  "name": "Connecting Ridge CR1",
+  "lat": -89.45,
+  "lon": -137.31,
+  "group": "Candidate site",
+  "source": "LOLA LDEM_80S_20M / LDEM_75S_120M",
+  "near": {
+   "file": "sites/connecting-ridge-cr1_near.webp",
+   "size": 1024,
+   "hMin": -1.2732547521591187,
+   "hMax": 5.280245247840881,
+   "cellKm": 0.02
+  },
+  "mid": {
+   "file": "sites/connecting-ridge-cr1_mid.webp",
+   "size": 1024,
+   "hMin": -4.235538482666016,
+   "hMax": 28.531961517333983,
+   "cellKm": 0.12
+  },
+  "photo": "sites/connecting-ridge-cr1_photo.jpg"
+ },
+ {
+  "id": "shackleton-rim-s",
+  "name": "Shackleton rim S",
+  "lat": -89.78,
+  "lon": -155.73,
+  "group": "Candidate site",
+  "source": "LOLA LDEM_80S_20M / LDEM_75S_120M",
+  "near": {
+   "file": "sites/shackleton-rim-s_near.webp",
+   "size": 1024,
+   "hMin": -2.84600830078125,
+   "hMax": 3.7074916992187497,
+   "cellKm": 0.02
+  },
+  "mid": {
+   "file": "sites/shackleton-rim-s_mid.webp",
+   "size": 1024,
+   "hMin": -4.24440336227417,
+   "hMax": 28.52309663772583,
+   "cellKm": 0.12
+  },
+  "photo": "sites/shackleton-rim-s_photo.jpg"
+ },
+ {
+  "id": "south-pole",
+  "name": "Lunar south pole",
+  "lat": -90.0,
+  "lon": 0.0,
+  "group": "Landmark",
+  "source": "LOLA LDEM_80S_20M / LDEM_75S_120M",
+  "near": {
+   "file": "sites/south-pole_near.webp",
+   "size": 1024,
+   "hMin": -2.872483730316162,
+   "hMax": 3.6810162696838375,
+   "cellKm": 0.02
+  },
+  "mid": {
+   "file": "sites/south-pole_mid.webp",
+   "size": 1024,
+   "hMin": -4.376928329467773,
+   "hMax": 28.390571670532225,
+   "cellKm": 0.12
+  },
+  "photo": "sites/south-pole_photo.jpg"
+ },
+ {
+  "id": "apollo-11",
+  "name": "Apollo 11 · Tranquility Base",
+  "lat": 0.674,
+  "lon": 23.473,
+  "group": "Apollo",
+  "source": "SLDEM2015 512 / 128 ppd",
+  "near": {
+   "file": "sites/apollo-11_near.webp",
+   "size": 1024,
+   "hMin": -2.4867472648620605,
+   "hMax": 4.066752735137939,
+   "cellKm": 0.06
+  },
+  "mid": {
+   "file": "sites/apollo-11_mid.webp",
+   "size": 1024,
+   "hMin": -4.151257514953613,
+   "hMax": 28.616242485046385,
+   "cellKm": 0.24
+  },
+  "photo": "sites/apollo-11_photo.jpg"
+ },
+ {
+  "id": "apollo-12",
+  "name": "Apollo 12 · Ocean of Storms",
+  "lat": -3.014,
+  "lon": -23.419,
+  "group": "Apollo",
+  "source": "SLDEM2015 512 / 128 ppd",
+  "near": {
+   "file": "sites/apollo-12_near.webp",
+   "size": 1024,
+   "hMin": -1.7795515060424805,
+   "hMax": 4.773948493957519,
+   "cellKm": 0.06
+  },
+  "mid": {
+   "file": "sites/apollo-12_mid.webp",
+   "size": 1024,
+   "hMin": -3.354285955429077,
+   "hMax": 29.41321404457092,
+   "cellKm": 0.24
+  },
+  "photo": "sites/apollo-12_photo.jpg"
+ },
+ {
+  "id": "apollo-14",
+  "name": "Apollo 14 · Fra Mauro",
+  "lat": -3.646,
+  "lon": -17.472,
+  "group": "Apollo",
+  "source": "SLDEM2015 512 / 128 ppd",
+  "near": {
+   "file": "sites/apollo-14_near.webp",
+   "size": 1024,
+   "hMin": -1.589904546737671,
+   "hMax": 4.963595453262329,
+   "cellKm": 0.06
+  },
+  "mid": {
+   "file": "sites/apollo-14_mid.webp",
+   "size": 1024,
+   "hMin": -3.2529075145721436,
+   "hMax": 29.514592485427855,
+   "cellKm": 0.24
+  },
+  "photo": "sites/apollo-14_photo.jpg"
+ },
+ {
+  "id": "apollo-15",
+  "name": "Apollo 15 · Hadley Rille",
+  "lat": 26.132,
+  "lon": 3.633,
+  "group": "Apollo",
+  "source": "SLDEM2015 512 / 128 ppd",
+  "near": {
+   "file": "sites/apollo-15_near.webp",
+   "size": 1024,
+   "hMin": -2.96836519241333,
+   "hMax": 3.5851348075866696,
+   "cellKm": 0.06
+  },
+  "mid": {
+   "file": "sites/apollo-15_mid.webp",
+   "size": 1024,
+   "hMin": -3.065084934234619,
+   "hMax": 29.70241506576538,
+   "cellKm": 0.24
+  },
+  "photo": "sites/apollo-15_photo.jpg"
+ },
+ {
+  "id": "apollo-16",
+  "name": "Apollo 16 · Descartes",
+  "lat": -8.973,
+  "lon": 15.499,
+  "group": "Apollo",
+  "source": "SLDEM2015 512 / 128 ppd",
+  "near": {
+   "file": "sites/apollo-16_near.webp",
+   "size": 1024,
+   "hMin": -0.42278239130973816,
+   "hMax": 6.1307176086902615,
+   "cellKm": 0.06
+  },
+  "mid": {
+   "file": "sites/apollo-16_mid.webp",
+   "size": 1024,
+   "hMin": -2.40609073638916,
+   "hMax": 30.361409263610838,
+   "cellKm": 0.24
+  },
+  "photo": "sites/apollo-16_photo.jpg"
+ },
+ {
+  "id": "apollo-17",
+  "name": "Apollo 17 · Taurus–Littrow",
+  "lat": 20.191,
+  "lon": 30.772,
+  "group": "Apollo",
+  "source": "SLDEM2015 512 / 128 ppd",
+  "near": {
+   "file": "sites/apollo-17_near.webp",
+   "size": 1024,
+   "hMin": -3.1406900882720947,
+   "hMax": 3.412809911727905,
+   "cellKm": 0.06
+  },
+  "mid": {
+   "file": "sites/apollo-17_mid.webp",
+   "size": 1024,
+   "hMin": -3.784381628036499,
+   "hMax": 28.9831183719635,
+   "cellKm": 0.24
+  },
+  "photo": "sites/apollo-17_photo.jpg"
+ }
+]

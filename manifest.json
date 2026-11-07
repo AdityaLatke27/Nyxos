@@ -1,0 +1,32 @@
+{
+ "radiusKm": 1737.4,
+ "poleFine": {
+  "file": "pole_fine.webp",
+  "size": 4096,
+  "hMin": -5.617374897003174,
+  "hMax": 10.766375102996825,
+  "cellKm": 0.1,
+  "halfExtentKm": 204.8,
+  "source": "LRO LOLA LDEM_80S_80M"
+ },
+ "poleWide": {
+  "file": "pole_wide.webp",
+  "size": 2048,
+  "hMin": -7.760143756866455,
+  "hMax": 57.77485624313354,
+  "cellKm": 0.4,
+  "halfExtentKm": 409.6,
+  "source": "LRO LOLA LDEM_75S_240M"
+ },
+ "lroPole": {
+  "file": "lro_pole.webp",
+  "cellKm": 0.2,
+  "halfExtentKm": 204.8,
+  "source": "LRO WAC global mosaic v2 (NASA/GSFC/ASU) via NASA Moon Trek"
+ },
+ "earth": {
+  "day": "earth_day.webp",
+  "clouds": "earth_clouds.webp",
+  "night": "earth_night.webp"
+ }
+}
