@@ -31,13 +31,13 @@ export default function RegionBar({ region }: { region: Region | null }) {
       ) : (
         <span>No catalogued crater here. Region radius</span>
       )}
-      {(!region.crater || region.kind === 'around') &&
+      {region.kind === 'around' &&
         RADII.map((r) => (
           <button key={r} className={`btn ${s.regionKm === r ? 'on' : ''}`} onClick={() => s.set({ regionKm: r })}>
             {r} km
           </button>
         ))}
-      {!region.crater && (
+      {region.kind === 'around' && (
         <span>
           around {fmtLat(region.center.lat)} {fmtLon(region.center.lon)}
         </span>

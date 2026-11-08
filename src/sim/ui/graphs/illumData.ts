@@ -41,7 +41,7 @@ export function buildGroups(point: LatLon | null, region: Region | null, rg: Reg
         if (z && byZone[z]) byZone[z].push(c)
       } else all.push(c)
     }
-    if (region.crater) {
+    if (region.zonal) {
       const parts: Cell[] = []
       for (const [z, label] of [['floor', 'Floor'], ['wall', 'Walls'], ['rim', 'Rim']] as const) {
         const cs = pick(byZone[z], PER_GROUP)
@@ -62,6 +62,8 @@ export interface GroupSeries {
   /** percentage of the group's cells with the Sun's centre-weighted disc ≥ 50% visible (for one cell: the disc fraction) */
   lit: Float32Array
   events: Events
+  /** mean of lit over the window, 0..1: for a group, the average share of its area in direct sunlight */
+  meanLit: number
   n: number
 }
 
@@ -108,7 +110,9 @@ export function useIllum(terrain: CpuTerrain, groups: Group[], startDay: number,
       let lit: Float32Array
       if (g.cells.length === 1) lit = fr[0].map((v) => v * 100)
       else lit = litPercent(fr, track.n)
-      return { id: g.id, label: g.label, lit, events: findEvents(Float32Array.from(lit, (v) => v / 100), track), n: g.cells.length }
+      let sum = 0
+      for (let i = 0; i < lit.length; i++) sum += lit[i]
+      return { id: g.id, label: g.label, lit, meanLit: sum / lit.length / 100, events: findEvents(Float32Array.from(lit, (v) => v / 100), track), n: g.cells.length }
     })
     const first = groups[0]?.cells[0]
     return { groups: out, sun: first ? series(first) : null }

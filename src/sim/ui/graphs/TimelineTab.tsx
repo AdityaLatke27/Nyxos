@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { LatLon } from '../../../analysis/geo'
-import { SOURCE_EXPLAIN } from '../../../analysis/provenance'
 import type { Feature } from '../../data/types'
 import { fmtDuration, fmtUtc } from '../../state/frame'
 import { useSim, WINDOW_HOURS } from '../../state/store'
 import type { CpuTerrain } from '../../terrain/cpuTerrain'
 import { COLORS, fmtTick, niceTicks, useChartCanvas } from './chartUtils'
+import { Chip, ExportButton, FRAME_NOTE, coordFile, downloadCsv } from './exportUtils'
 import { buildGroups, useIllum, type Illum } from './illumData'
 import RegionBar from './RegionBar'
 import { useRegion, useRegionGrid } from './region'
@@ -46,7 +46,7 @@ export function useIllumSetup(terrain: CpuTerrain, features: Feature[], point: L
   const groups = useMemo(() => buildGroups(point, region, rg, pinned), [point, region, rg, pinned])
   const illum = useIllum(terrain, groups, startDay)
   useEffect(() => {
-    useSim.getState().set({ regionDisc: region ? { center: region.center, radiusKm: region.crater ? region.radiusKm * 1.3 : region.radiusKm } : null })
+    useSim.getState().set({ regionDisc: region ? { center: region.center, radiusKm: region.zonal ? region.radiusKm * 1.3 : region.radiusKm } : null })
     return () => useSim.getState().set({ regionDisc: null })
   }, [region])
   return { region, rg, groups, illum, startDay }
@@ -87,10 +87,10 @@ export default function TimelineTab({ terrain, features, point, hasTerrain }: Pr
     (g, W, H) => {
       if (!cur || !sun) return
       const x = timeX(W, PAD.l, PAD.r)
-      const aTop = PAD.t
-      const aBot = Math.round(H * 0.5)
-      const eTop = aBot + 14
-      const eBot = H - PAD.b
+      const eTop = PAD.t
+      const eBot = Math.round(H * 0.56)
+      const aTop = eBot + 16
+      const aBot = H - PAD.b
       g.font = '10px "Space Grotesk", sans-serif'
       // long darkness (>= 24 h) shading across both panels
       g.fillStyle = 'rgba(255,120,140,0.10)'
@@ -98,7 +98,7 @@ export default function TimelineTab({ terrain, features, point, hasTerrain }: Pr
         if (d.endMs - d.startMs < DAY_MS) continue
         const a = x((d.startMs - illum.track.startMs) / (WINDOW_HOURS * 3.6e6))
         const b = x((d.endMs - illum.track.startMs) / (WINDOW_HOURS * 3.6e6))
-        g.fillRect(a, aTop, b - a, eBot - aTop)
+        g.fillRect(a, eTop, b - a, aBot - eTop)
       }
       // day ticks
       g.fillStyle = COLORS.text
@@ -107,8 +107,8 @@ export default function TimelineTab({ terrain, features, point, hasTerrain }: Pr
       for (let d = 0; d <= 30; d += 5) {
         const px = x(d / 30)
         g.beginPath()
-        g.moveTo(px, aTop)
-        g.lineTo(px, eBot)
+        g.moveTo(px, eTop)
+        g.lineTo(px, aBot)
         g.stroke()
         const t = new Date(illum.track.startMs + d * DAY_MS)
         g.fillText(`${t.getUTCDate()}/${t.getUTCMonth() + 1}`, px, H - 6)
@@ -140,7 +140,7 @@ export default function TimelineTab({ terrain, features, point, hasTerrain }: Pr
         for (const t of list) {
           const px = x((t - illum.track.startMs) / (WINDOW_HOURS * 3.6e6))
           g.beginPath()
-          const y0 = aBot + 3
+          const y0 = eBot + 4
           if (up) {
             g.moveTo(px, y0)
             g.lineTo(px - 3, y0 + 6)
@@ -188,25 +188,27 @@ export default function TimelineTab({ terrain, features, point, hasTerrain }: Pr
       g.lineWidth = 1
       g.fillStyle = COLORS.text
       g.textAlign = 'left'
-      g.fillText('illuminated % (shaded = dark)', PAD.l + 4, aTop + 10)
+      g.fillText(`illuminated % — ${cur.label}: average ${(cur.meanLit * 100).toFixed(0)}% lit over window`, PAD.l + 4, aTop + 10)
       g.fillStyle = COLORS.line
-      g.fillText('Sun elevation', PAD.l + 4, eTop + 10)
+      g.fillText('Sun elevation at selected point (°, UTC dates; ▲ rise ▼ set)', PAD.l + 4, eTop + 10)
       g.fillStyle = 'rgba(127,224,176,0.9)'
-      g.fillText('azimuth', PAD.l + 84, eTop + 10)
+      g.textAlign = 'right'
+      g.fillText('azimuth (0–360°, scaled)', W - PAD.r - 4, eBot - 6)
+      g.textAlign = 'left'
       // selected time and hover
       const cx = x(fracNow)
       g.strokeStyle = '#fff'
       g.beginPath()
-      g.moveTo(cx, aTop)
-      g.lineTo(cx, eBot)
+      g.moveTo(cx, eTop)
+      g.lineTo(cx, aBot)
       g.stroke()
       if (hover != null) {
         g.strokeStyle = COLORS.cursor
         g.setLineDash([3, 3])
         const hx = x(hover / (N - 1))
         g.beginPath()
-        g.moveTo(hx, aTop)
-        g.lineTo(hx, eBot)
+        g.moveTo(hx, eTop)
+        g.lineTo(hx, aBot)
         g.stroke()
         g.setLineDash([])
       }
@@ -221,6 +223,23 @@ export default function TimelineTab({ terrain, features, point, hasTerrain }: Pr
   }
   const [drag, setDrag] = useState(false)
   const apply = (i: number) => setSimTime(illum.track.startMs + i * illum.track.stepMs, startDay)
+
+  const doExport = () => {
+    if (!sun || !illum.groups.length || !point) return
+    const gs = illum.groups
+    downloadCsv(
+      `nyxos_sunlight_${coordFile(point.lat, point.lon)}.csv`,
+      [
+        `NYXOS sunlight timeline, 30 days from ${new Date(illum.track.startMs).toISOString()}, 30-minute steps`,
+        `Selected point ${point.lat.toFixed(5)}, ${point.lon.toFixed(5)}. Sun elevation and azimuth are geometric (no refraction) at that point; azimuth clockwise from north.`,
+        'lit_pct: one location = % of the Sun disc (0.2666 deg radius) above the DEM horizon; a group = % of its sampled cells with at least half the disc visible. Direct sunlight only.',
+        'Horizon: 144 azimuths x 170 log-spaced ray steps to 650 km on the LOLA DEM. Sun: Meeus + IAU 2009 orientation (checked against NASA DE440: <=0.01 deg; orientation within 0.05 deg of optical libration).',
+        FRAME_NOTE,
+      ],
+      ['time_utc', 'sun_elevation_deg', 'sun_azimuth_deg', ...gs.map((g) => `lit_pct[${g.label}; ${g.n} loc]`)],
+      Array.from({ length: N }, (_, i) => [new Date(illum.track.startMs + i * illum.track.stepMs).toISOString(), sun.sunElev[i], sun.sunAz[i], ...gs.map((g) => +g.lit[i].toFixed(2))]),
+    )
+  }
 
   const shown = hover ?? Math.min(N - 1, Math.max(0, Math.round(fracNow * (N - 1))))
   const ev = cur?.events
@@ -239,6 +258,7 @@ export default function TimelineTab({ terrain, features, point, hasTerrain }: Pr
           ))}
         </div>
         <PinBar point={point} />
+        <ExportButton disabled={!illum.ready} onClick={doExport} />
       </div>
       {!point ? (
         <p className="note gd-empty">Click a point on the Moon to see when the Sun reaches it.</p>
@@ -267,13 +287,10 @@ export default function TimelineTab({ terrain, features, point, hasTerrain }: Pr
             elevation {sun.sunElev[shown].toFixed(1)}°, azimuth {sun.sunAz[shown].toFixed(0)}° {hover == null && <em>(click or drag the graph to move the 3D view to that time)</em>}
           </div>
           <p className="gd-stats">
-            {cur.label} ({cur.n} {cur.n === 1 ? 'location' : 'locations'}): direct sunlight {(ev!.litFraction * 100).toFixed(0)}% of the next 30 days · sunrises {ev!.sunrises.length}, sunsets {ev!.sunsets.length} (▲ rise, ▼ set
+            {cur.label} ({cur.n} {cur.n === 1 ? 'location' : 'locations'}): average {(cur.meanLit * 100).toFixed(0)}% of the area in direct sunlight over the next 30 days{cur.n > 1 ? ` (majority of the area lit ${(ev!.litFraction * 100).toFixed(0)}% of the time)` : ''} · sunrises {ev!.sunrises.length}, sunsets {ev!.sunsets.length} (▲ rise, ▼ set
             {cur.n > 1 ? ', where over half the sampled area is lit' : ''}) · longest darkness {hrs(ev!.longestDark)} · longest daylight {hrs(ev!.longestLight)}. Red shading = darkness of 24 h or more. “≥” means the interval runs past
-            the window. Direct sunlight only: the Sun's disc (0.27° radius) against the DEM horizon; no earthshine, scattering or crater-wall glow.{' '}
-            <abbr className="src src-modelled" title={SOURCE_EXPLAIN.modelled}>
-              MODEL
-            </abbr>{' '}
-            Sun position: Meeus + IAU lunar orientation, not yet checked against JPL Horizons.
+            the window. Direct sunlight only: the Sun's disc (0.27° radius) against the DEM horizon; no earthshine, scattering or crater-wall glow. <Chip source="modelled" /> Sun position (Meeus + IAU 2009 orientation) agrees with NASA DE440
+            to 0.01° and with optical libration to 0.05°; near the poles the Sun moves so slowly that this can shift a sunrise or sunset by hours. {FRAME_NOTE}
           </p>
         </>
       )}

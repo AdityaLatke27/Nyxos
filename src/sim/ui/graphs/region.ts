@@ -9,7 +9,10 @@ import type { CpuTerrain } from '../../terrain/cpuTerrain'
 
 /** The crater (if any) the selected point is inside, and the effective region being analysed. */
 export interface Region {
+  /** the catalogued crater containing the point, if any (kept even when analysing a disc around the point) */
   crater: Feature | null
+  /** true when the region is a crater zone; false for a disc around the point */
+  zonal: boolean
   kind: RegionKind
   center: LatLon
   /** radius of the analysed disc, km (crater radius for crater zones) */
@@ -23,9 +26,9 @@ export function useRegion(features: Feature[], point: LatLon | null): Region | n
   return useMemo(() => {
     if (!point) return null
     if (crater && kind !== 'around') {
-      return { crater, kind, center: { lat: crater[1], lon: crater[2] }, radiusKm: crater[3] / 2 }
+      return { crater, zonal: true, kind, center: { lat: crater[1], lon: crater[2] }, radiusKm: crater[3] / 2 }
     }
-    return { crater: null, kind: 'around', center: point, radiusKm: regionKm }
+    return { crater, zonal: false, kind: 'around', center: point, radiusKm: regionKm }
   }, [point, crater, kind, regionKm])
 }
 
@@ -50,17 +53,17 @@ export function useRegionGrid(terrain: CpuTerrain, region: Region | null, hasTer
   return useMemo(() => {
     if (!region) return null
     try {
-      if (region.crater) {
+      if (region.zonal && region.crater) {
         const g = analyzeCrater(terrain, { lat: region.center.lat, lon: region.center.lon, diameterKm: region.crater[3] })
         if (g.grid) {
           const Rc = region.crater[3] / 2
           return { grid: g.grid, zones: Array.from(g.grid.rKm, (r) => zoneOf(r, Rc)), note: null }
         }
       }
-      const radius = region.crater ? 3 : region.radiusKm
+      const radius = region.zonal ? 3 : region.radiusKm
       const res = terrain.resolutionKmAt(region.center.lat, region.center.lon)
       const grid = sampleDisc(terrain, region.center, radius, Math.max(res, radius / 45))
-      return { grid, zones: null, note: region.crater ? 'This crater is too large to sample in full; showing 3 km around the point.' : null }
+      return { grid, zones: null, note: region.zonal ? 'This crater is too large to sample in full; showing 3 km around the point.' : null }
     } catch {
       return null
     }

@@ -6,6 +6,7 @@ import { fmtLat, fmtLon } from '../../state/frame'
 import { useSim } from '../../state/store'
 import type { CpuTerrain } from '../../terrain/cpuTerrain'
 import { COLORS, fmtInt, fmtTick, niceTicks, useChartCanvas } from './chartUtils'
+import { ExportButton, Chip, FRAME_NOTE, coordFile, downloadCsv } from './exportUtils'
 import { useProfileLine } from './lines'
 
 interface Props {
@@ -22,6 +23,7 @@ export default function ProfileTab({ terrain, point, hasTerrain }: Props) {
   const s = useSim()
   const [hover, setHover] = useState<number | null>(null)
   const [locked, setLocked] = useState<number | null>(null)
+  const [trueScale, setTrueScale] = useState(false)
 
   const ends = useProfileLine(point)
 
@@ -55,9 +57,20 @@ export default function ProfileTab({ terrain, point, hasTerrain }: Props) {
       const xs = (d: number) => x0 + (d / t.lengthKm) * (x1 - x0)
       const ev = summarize(t.elevM)!
       const span = Math.max(1, ev.max - ev.min)
-      const lo = ev.min - span * 0.08
-      const hi = ev.max + span * 0.08
-      const ys = (m: number) => split - 8 - ((m - lo) / (hi - lo)) * (split - 8 - PAD.t)
+      const plotH = split - 8 - PAD.t
+      let lo = ev.min - span * 0.08
+      let hi = ev.max + span * 0.08
+      if (trueScale) {
+        // equal metres per pixel horizontally and vertically (1:1), unless the relief cannot fit
+        const rangeM = (plotH * t.lengthKm * 1000) / (x1 - x0)
+        if (rangeM >= span * 1.02) {
+          const c = (ev.min + ev.max) / 2
+          lo = c - rangeM / 2
+          hi = c + rangeM / 2
+        }
+      }
+      const exag = (plotH * t.lengthKm * 1000) / ((hi - lo) * (x1 - x0))
+      const ys = (m: number) => split - 8 - ((m - lo) / (hi - lo)) * plotH
       g.font = '10.5px "Space Grotesk", sans-serif'
       g.textBaseline = 'middle'
 
@@ -79,6 +92,10 @@ export default function ProfileTab({ terrain, point, hasTerrain }: Props) {
       g.fillStyle = COLORS.axis
       g.fillText('Elevation (m)', 0, 0)
       g.restore()
+
+      g.textAlign = 'right'
+      g.fillStyle = COLORS.axis
+      g.fillText(`vertical exaggeration ×${exag < 10 ? exag.toFixed(1) : Math.round(exag)}${Math.abs(exag - 1) < 0.05 ? ' (true scale)' : ''}`, x1 - 16, PAD.t + 4)
 
       // terrain fill + line
       g.beginPath()
@@ -158,7 +175,7 @@ export default function ProfileTab({ terrain, point, hasTerrain }: Props) {
         g.fill()
       }
     },
-    [t, idx],
+    [t, idx, trueScale],
   )
 
   const onMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -180,6 +197,21 @@ export default function ProfileTab({ terrain, point, hasTerrain }: Props) {
       return
     }
     if (hover != null) setLocked(hover)
+  }
+
+  const doExport = () => {
+    if (!t || !ends) return
+    downloadCsv(
+      `nyxos_profile_${coordFile(ends.a.lat, ends.a.lon)}_to_${coordFile(ends.b.lat, ends.b.lon)}.csv`,
+      [
+        'NYXOS cross-section',
+        `A: ${ends.a.lat.toFixed(5)}, ${ends.a.lon.toFixed(5)}  B: ${ends.b.lat.toFixed(5)}, ${ends.b.lon.toFixed(5)}  length ${t.lengthKm.toFixed(3)} km  step ${(t.stepKm * 1000).toFixed(1)} m`,
+        `Source: LOLA DEM via NYXOS terrain pyramid, finest cell ${(resKm * 1000).toFixed(0)} m. Great-circle path. Slope = along-track central difference.`,
+        FRAME_NOTE,
+      ],
+      ['distance_km', 'latitude_deg', 'longitude_deg', 'elevation_m', 'along_track_slope_deg'],
+      t.distKm.map((d, i) => [d, t.lat[i], t.lon[i], t.elevM[i], t.slopeDeg[i]]),
+    )
   }
 
   const ev = t ? summarize(t.elevM) : null
@@ -222,6 +254,15 @@ export default function ProfileTab({ terrain, point, hasTerrain }: Props) {
             </button>
           </div>
         )}
+        <div className="seg" role="group" aria-label="Vertical scale">
+          <button className={`btn ${!trueScale ? 'on' : ''}`} onClick={() => setTrueScale(false)} title="Stretch the elevation range to fill the chart">
+            Fit relief
+          </button>
+          <button className={`btn ${trueScale ? 'on' : ''}`} onClick={() => setTrueScale(true)} title="Same scale vertically and horizontally">
+            True scale 1:1
+          </button>
+        </div>
+        <ExportButton disabled={!t} onClick={doExport} />
       </div>
 
       {t ? (
@@ -239,8 +280,7 @@ export default function ProfileTab({ terrain, point, hasTerrain }: Props) {
           </div>
           <p className="gd-stats">
             Length {t.lengthKm.toFixed(1)} km · {t.distKm.length} samples every {(t.stepKm * 1000).toFixed(0)} m · min {fmtInt(ev!.min)} m · max {fmtInt(ev!.max)} m · relief{' '}
-            {fmtInt(ev!.max - ev!.min)} m · mean |slope| {meanAbs.toFixed(1)}° · steepest {steep.toFixed(1)}° · LOLA DEM, {resKm < 1 ? `${Math.round(resKm * 1000)} m` : `${resKm.toFixed(1)} km`} cells · heights above the 1737.4 km
-            sphere
+            {fmtInt(ev!.max - ev!.min)} m · mean |slope| {meanAbs.toFixed(1)}° · steepest {steep.toFixed(1)}° · <Chip source="dem" /> LOLA DEM, {resKm < 1 ? `${Math.round(resKm * 1000)} m` : `${resKm.toFixed(1)} km`} cells. {FRAME_NOTE}
           </p>
         </>
       ) : (

@@ -804,8 +804,8 @@
   left: var(--ui-left);
   right: var(--ui-right);
   bottom: var(--ui-bottom);
-  height: 470px;
-  max-height: 74%;
+  height: 580px;
+  max-height: 82%;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -935,4 +935,32 @@
   .gd-two {
     grid-template-columns: 1fr;
   }
+}
+.gd-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+  color: rgba(185, 202, 228, 0.8);
+}
+.gd-legend i {
+  width: 110px;
+  height: 9px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgb(16, 22, 52), rgb(120, 60, 110), rgb(236, 120, 70), rgb(255, 226, 120));
+}
+.gd-export {
+  margin-left: auto;
+}
+.graph-drawer .src-catalogue {
+  color: #9bd0ff;
+}
+.graph-drawer .src-dem {
+  color: #8fe0b4;
+}
+.graph-drawer .src-modelled {
+  color: #ffd27a;
+}
+.graph-drawer .src-unavailable {
+  color: #9aa6bd;
 }

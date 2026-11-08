@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { interpolateGreatCircle, dirFromLatLon, latLonFromDir, type LatLon } from '../../../analysis/geo'
-import { SOURCE_EXPLAIN } from '../../../analysis/provenance'
 import type { Feature } from '../../data/types'
 import { fmtLat, fmtLon, fmtUtc } from '../../state/frame'
 import { useSim, WINDOW_HOURS } from '../../state/store'
 import type { CpuTerrain } from '../../terrain/cpuTerrain'
 import { COLORS, useChartCanvas } from './chartUtils'
+import { Chip, ExportButton, FRAME_NOTE, coordFile, downloadCsv } from './exportUtils'
 import { buildGroups, useIllum, type Group } from './illumData'
 import { useProfileLine } from './lines'
 import RegionBar from './RegionBar'
@@ -44,6 +44,7 @@ export default function HeatmapTab({ terrain, features, point, hasTerrain }: Pro
   const line = useProfileLine(point)
   const [hover, setHover] = useState<{ i: number; row: number } | null>(null)
   const [drag, setDrag] = useState(false)
+  const [sorted, setSorted] = useState(false)
 
   const groups = useMemo<Group[]>(() => {
     if (mode === 'line') {
@@ -62,15 +63,25 @@ export default function HeatmapTab({ terrain, features, point, hasTerrain }: Pro
 
   useEffect(() => {
     useSim.getState().set({
-      regionDisc: mode === 'groups' && region ? { center: region.center, radiusKm: region.crater ? region.radiusKm * 1.3 : region.radiusKm } : null,
+      regionDisc: mode === 'groups' && region ? { center: region.center, radiusKm: region.zonal ? region.radiusKm * 1.3 : region.radiusKm } : null,
       transectLine: mode === 'line' ? line : null,
     })
     return () => useSim.getState().set({ regionDisc: null, transectLine: null })
   }, [mode, region, line])
 
-  const rows = illum.groups
+  const labelled = useMemo(
+    () =>
+      illum.groups.map((r) => {
+        const g = groups.find((x) => x.id === r.id)
+        const single = g && g.cells.length === 1 ? g.cells[0] : null
+        const hasCoord = /°/.test(r.label)
+        return { ...r, label: single && !hasCoord ? `${r.label} ${fmtLat(single.lat)} ${fmtLon(single.lon)}` : `${r.label}${g && g.cells.length > 1 ? ` (${g.cells.length} cells)` : ''}` }
+      }),
+    [illum.groups, groups],
+  )
+  const rows = useMemo(() => (sorted ? [...labelled].sort((a, b) => b.meanLit - a.meanLit) : labelled), [labelled, sorted])
   const N = illum.track.n
-  const PAD = { l: 150, r: 10, t: 6, b: 20 }
+  const PAD = { l: 250, r: 10, t: 6, b: 20 }
   const fracNow = Math.max(0, Math.min(1, offsetHours / WINDOW_HOURS))
 
   const ref = useChartCanvas(
@@ -88,8 +99,8 @@ export default function HeatmapTab({ terrain, features, point, hasTerrain }: Pro
         }
         g.fillStyle = COLORS.text
         g.textAlign = 'right'
-        const pct = Math.round(r.events.litFraction * 100)
-        const name = r.label.length > 22 ? r.label.slice(0, 21) + '…' : r.label
+        const pct = Math.round(r.meanLit * 100)
+        const name = r.label.length > 34 ? r.label.slice(0, 33) + '…' : r.label
         g.fillText(`${name} · ${pct}%`, PAD.l - 6, y + rh / 2 + 3)
       })
       g.textAlign = 'center'
@@ -119,6 +130,20 @@ export default function HeatmapTab({ terrain, features, point, hasTerrain }: Pro
     const row = Math.max(0, Math.min(rows.length - 1, Math.floor((e.clientY - r.top - PAD.t) / rh)))
     return { i, row }
   }
+  const doExport = () => {
+    if (!rows.length) return
+    downloadCsv(
+      `nyxos_illumination_${point ? coordFile(point.lat, point.lon) : 'heatmap'}.csv`,
+      [
+        `NYXOS illumination heatmap, 30 days from ${new Date(illum.track.startMs).toISOString()}, 30-minute steps`,
+        'lit_pct: one location = % of the Sun disc (0.2666 deg radius) above the DEM horizon; a group = % of its sampled cells with at least half the disc visible. Direct sunlight only.',
+        'Row summaries: ' + rows.map((r) => `${r.label} = ${(r.meanLit * 100).toFixed(1)}% of area-time lit`).join('; '),
+        FRAME_NOTE,
+      ],
+      ['time_utc', ...rows.map((r) => `lit_pct[${r.label}]`)],
+      Array.from({ length: N }, (_, i) => [new Date(illum.track.startMs + i * illum.track.stepMs).toISOString(), ...rows.map((r) => +r.lit[i].toFixed(2))]),
+    )
+  }
   const hv = hover && rows[hover.row]
   const count = groups.reduce((a, g) => a + g.cells.length, 0)
 
@@ -141,6 +166,15 @@ export default function HeatmapTab({ terrain, features, point, hasTerrain }: Pro
         ) : (
           <span className="muted">Uses the line from the Cross-section tab (direction and reach set there), {LINE_ROWS} points from A to B.</span>
         )}
+        <button className={`btn ${sorted ? 'on' : ''}`} onClick={() => setSorted((v) => !v)} title="Order rows from most to least illuminated">
+          Sort by illumination
+        </button>
+        <div className="gd-legend" aria-label="Colour scale: 0 to 100 percent lit">
+          <span>0%</span>
+          <i />
+          <span>100% lit</span>
+        </div>
+        <ExportButton disabled={!rows.length} onClick={doExport} />
       </div>
       {!point ? (
         <p className="note gd-empty">Click a point on the Moon to compare its illumination through time.</p>
@@ -171,15 +205,13 @@ export default function HeatmapTab({ terrain, features, point, hasTerrain }: Pro
                 <strong>{hv.label}</strong> · {fmtUtc(illum.track.startMs + hover.i * illum.track.stepMs)} · <strong>{hv.lit[hover.i].toFixed(0)}% lit</strong>
               </>
             ) : (
-              <>Dark blue = shadow, bright = full sunlight. Click or drag to move the 3D view to that time. The percentage after each name is how much of the 30 days it is lit.</>
+              <>Dark blue = shadow, bright = full sunlight. Click or drag to move the 3D view to that time. The percentage after each name is the average share of that row's area in sunlight over the 30 days.</>
             )}
           </div>
           <p className="gd-stats">
             Each row is computed from the terrain horizon at its location(s); zone rows show the share of the sampled cells lit at each moment. Direct sunlight only (no earthshine or scattering).{' '}
-            <abbr className="src src-modelled" title={SOURCE_EXPLAIN.modelled}>
-              MODEL
-            </abbr>{' '}
-            30 days from the start date of the time bar, 30-minute steps.
+            <Chip source="modelled" />{' '}
+            30 days from the start date of the time bar, 30-minute steps, UTC. {FRAME_NOTE}
           </p>
         </>
       )}
