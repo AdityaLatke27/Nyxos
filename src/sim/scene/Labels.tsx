@@ -6,6 +6,7 @@ import type { CpuTerrain } from '../terrain/cpuTerrain'
 import { dirFromLatLon, R_KM } from '../terrain/cpuTerrain'
 import { useSim } from '../state/store'
 import { haloText } from './labelText'
+import { drawGraphOverlay } from './graphOverlay'
 
 interface Props {
   overlay: React.RefObject<HTMLCanvasElement | null>
@@ -162,6 +163,8 @@ export default function Labels({ overlay, features, sites, terrain, current }: P
       const d80 = dirFromLatLon(-80, 45)
       if (toScreen(d80, terrain.heightAt(d80, 2), pt) && pt.facing > 0.02) g.fillText('80°S', pt.x + 4, pt.y)
     }
+
+    drawGraphOverlay(g, toScreen, pt, terrain)
 
     // ---- IAU features, largest first, until the screen is busy
     if (!s.showCraters) return

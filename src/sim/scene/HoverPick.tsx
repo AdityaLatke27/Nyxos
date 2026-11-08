@@ -65,7 +65,7 @@ export default function HoverPick({ terrain, onHover }: { terrain: CpuTerrain; o
       onHover({
         x: e.clientX - rect.left,
         y: e.clientY - rect.top,
-        text: `${fmtLat(lat)} ${fmtLon(lon)} · ${hM} m · ${lit} · click to pick`,
+        text: `${fmtLat(lat)} ${fmtLon(lon)} · ${hM} m · ${lit} · ${useSim.getState().picking ? `click to set end ${useSim.getState().picking!.toUpperCase()}` : 'click to pick'}`,
       })
     }
     const pdown = (e: PointerEvent) => (down = { x: e.clientX, y: e.clientY })
@@ -77,7 +77,14 @@ export default function HoverPick({ terrain, onHover }: { terrain: CpuTerrain; o
       const p = probe(e)
       if (!p) return
       const [lat, lon] = latLonFromDir(p)
-      useSim.getState().pick({ lat, lon })
+      const st = useSim.getState()
+      if (st.picking) {
+        // two-point cross-section: this click sets end A or B instead of selecting a site
+        const next = st.picking === 'a' && !st.lineB ? 'b' : null
+        st.set(st.picking === 'a' ? { lineA: { lat, lon }, picking: next } : { lineB: { lat, lon }, picking: null })
+        return
+      }
+      st.pick({ lat, lon })
     }
     const leave = () => onHover(null)
     el.addEventListener('pointermove', move)

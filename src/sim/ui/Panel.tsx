@@ -6,6 +6,7 @@ import type { Series, SiteNow } from '../analysis/siteAnalysis'
 import { nextCrossing } from '../analysis/siteAnalysis'
 import SiteChart from './SiteChart'
 import CraterOverview from './CraterOverview'
+import { GRAPH_TABS } from './graphs/GraphDrawer'
 
 interface Props {
   sites: SiteInfo[]
@@ -88,6 +89,18 @@ export default function Panel({ sites, features, terrain, current, now, series, 
       </section>
 
       <CraterOverview features={features} terrain={terrain} point={current} hasTerrain={!!current?.hasTerrain} />
+
+      <section className="graphs-launch">
+        <h2>Analysis graphs</h2>
+        <p className="note">Click anywhere on the Moon, then open a graph. Graphs are computed from the elevation model for that spot.</p>
+        <div className="row">
+          {GRAPH_TABS.map((t) => (
+            <button key={t.id} className={`btn ${s.graphOpen && s.graphTab === t.id ? 'on' : ''}`} onClick={() => s.set({ graphOpen: true, graphTab: t.id })}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </section>
 
       <section className="site">
         <h2>{standing ? 'Standing at' : 'Selected site'}</h2>

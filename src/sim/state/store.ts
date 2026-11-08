@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { LatLon } from '../../analysis/geo'
 
 export type View = 'globe' | 'pole' | 'stand'
 export type Layer = 'sun' | 'earth' | 'link' | 'heat' | 'photo'
@@ -13,6 +14,9 @@ export const LIGHTING: Record<Lighting, { fill: number; compress: number }> = {
   balanced: { fill: 0.025, compress: 1 },
   strong: { fill: 0, compress: 0 },
 }
+
+export type GraphTab = 'profile' | 'distribution' | 'timeline' | 'heatmap'
+export type RegionKind = 'whole' | 'floor' | 'wall' | 'rim' | 'outside' | 'around'
 
 export const WINDOW_HOURS = 30 * 24
 export const SPEEDS = [
@@ -49,6 +53,29 @@ interface SimState {
   showHaze: boolean
   aim: StandAim
   showPhoto: boolean
+
+  // ---- analysis graphs
+  graphOpen: boolean
+  graphTab: GraphTab
+  /** cross-section: through the selected point along a bearing, or between two clicked points */
+  profileMode: 'bearing' | 'points'
+  bearingDeg: number
+  halfLengthKm: number
+  lineA: LatLon | null
+  lineB: LatLon | null
+  /** which end the next map click sets in two-point mode */
+  picking: 'a' | 'b' | null
+  /** line and disc currently analysed, drawn on the map */
+  transectLine: { a: LatLon; b: LatLon } | null
+  regionDisc: { center: LatLon; radiusKm: number } | null
+  /** point under the cursor on a chart, shown on the terrain */
+  probe: LatLon | null
+  /** analysis region: a crater zone (inside a catalogued crater) or a disc around the selected point */
+  regionKind: RegionKind
+  regionKm: number
+  pinned: LatLon[]
+  heatMode: 'groups' | 'line'
+  timelineGroup: string
 
   setView: (v: View) => void
   selectSite: (id: string) => void
@@ -87,6 +114,23 @@ export const useSim = create<SimState>((set, get) => ({
   showHaze: true,
   aim: 'wide',
   showPhoto: false,
+
+  graphOpen: false,
+  graphTab: 'profile',
+  profileMode: 'bearing',
+  bearingDeg: 90,
+  halfLengthKm: 10,
+  lineA: null,
+  lineB: null,
+  picking: null,
+  transectLine: null,
+  regionDisc: null,
+  probe: null,
+  regionKind: 'whole',
+  regionKm: 3,
+  pinned: [],
+  heatMode: 'groups',
+  timelineGroup: 'point',
 
   setView: (view) => set({ view, aim: 'wide', showPhoto: false }),
   selectSite: (siteId) => {

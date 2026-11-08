@@ -18,6 +18,7 @@ import StandLabels from './scene/StandLabels'
 import Panel from './ui/Panel'
 import TimeBar from './ui/TimeBar'
 import ShowMenu from './ui/ShowMenu'
+import GraphDrawer from './ui/graphs/GraphDrawer'
 import NavRail from '../ui/nav/NavRail'
 import { HeatmapBaker, useHeatmap } from './analysis/useHeatmap'
 import './sim.css'
@@ -267,6 +268,7 @@ export default function SimApp() {
         <>
           <TimeBar />
           <ShowMenu />
+          <GraphDrawer terrain={terrain} features={assets.features} point={current} hasTerrain={!!current?.hasTerrain} />
           <Panel sites={assets.sites} features={assets.features} terrain={terrain} current={current} now={now} series={series} busy={busy} />
         </>
       )}

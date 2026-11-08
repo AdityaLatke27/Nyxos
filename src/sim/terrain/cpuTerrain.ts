@@ -233,12 +233,11 @@ export class CpuTerrain {
    * Terrain horizon elevation (degrees) around a site for `n` azimuths, clockwise
    * from north. Includes Moon curvature; observer at eyeKm above the ground.
    */
-  horizonProfile(latDeg: number, lonDeg: number, n = 720, eyeKm = 0.002): Float32Array {
+  horizonProfile(latDeg: number, lonDeg: number, n = 720, eyeKm = 0.002, steps = 340): Float32Array {
     const f = siteFrame(latDeg, lonDeg)
     const R = R_KM
     const h0 = this.heightAt(f.up) + eyeKm
     const out = new Float32Array(n)
-    const steps = 340
     const s0 = 0.02
     const sMax = 650
     const k = Math.pow(sMax / s0, 1 / steps)
