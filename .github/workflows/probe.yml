@@ -1,0 +1,36 @@
+name: probe-nasa-data
+on:
+  push:
+    branches: [data-probe]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Directory listings and headers
+        run: |
+          set +e
+          show() { echo; echo "=== $1"; curl -sSL -m 60 "$1" | grep -oiE 'href="[^"#?]+"' | head -${2:-80}; }
+          head_() { echo; echo "=== HEAD $1"; curl -sSIL -m 60 "$1" | grep -iE '^(HTTP|content-length|content-type|last-modified)' | head -8; }
+          show https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/ 120
+          show https://pgda.gsfc.nasa.gov/products/78 80
+          show https://pgda.gsfc.nasa.gov/products/69 60
+          show https://pds-geosciences.wustl.edu/lro/lro-l-dlre-5-prp-v1/ 40
+          show https://pds-geosciences.wustl.edu/missions/lro/diviner.htm 80
+          show https://astrogeology.usgs.gov/search/map/moon_crater_database_v1_robbins 60
+          head_ https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/moon_pa_de440_200625.bpc
+          head_ https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440.bsp
+          head_ https://naif.jpl.nasa.gov/pub/naif/generic_kernels/lsk/naif0012.tls
+      - name: Horizons reference (Sun elevation/azimuth from lunar surface points)
+        run: |
+          set +e
+          for site in "0.0,-89.9" "129.78,-89.67" "0.0,-80.0" "23.47,0.67"; do
+            echo; echo "=== Horizons site lon,lat = $site"
+            curl -sSG -m 60 "https://ssd.jpl.nasa.gov/api/horizons.api" \
+              --data-urlencode "format=text" --data-urlencode "COMMAND='10'" --data-urlencode "OBJ_DATA='NO'" \
+              --data-urlencode "MAKE_EPHEM='YES'" --data-urlencode "EPHEM_TYPE='OBSERVER'" --data-urlencode "CENTER='coord@301'" \
+              --data-urlencode "COORD_TYPE='GEODETIC'" --data-urlencode "SITE_COORD='${site},0'" \
+              --data-urlencode "START_TIME='2026-11-08 00:00'" --data-urlencode "STOP_TIME='2026-11-12 00:00'" \
+              --data-urlencode "STEP_SIZE='12 h'" --data-urlencode "QUANTITIES='4'" --data-urlencode "ANG_FORMAT='DEG'" --data-urlencode "CSV_FORMAT='YES'" | sed -n '/\$\$SOE/,/\$\$EOE/p'
+          done
