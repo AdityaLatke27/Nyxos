@@ -3,34 +3,44 @@ on:
   push:
     branches: [data-probe]
 permissions:
-  contents: read
+  contents: write
 jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Directory listings and headers
+      - uses: actions/checkout@v4
+      - name: Raw listings
         run: |
           set +e
-          show() { echo; echo "=== $1"; curl -sSL -m 60 "$1" | grep -oiE 'href="[^"#?]+"' | head -${2:-80}; }
-          head_() { echo; echo "=== HEAD $1"; curl -sSIL -m 60 "$1" | grep -iE '^(HTTP|content-length|content-type|last-modified)' | head -8; }
-          show https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/ 120
-          show https://pgda.gsfc.nasa.gov/products/78 80
-          show https://pgda.gsfc.nasa.gov/products/69 60
-          show https://pds-geosciences.wustl.edu/lro/lro-l-dlre-5-prp-v1/ 40
-          show https://pds-geosciences.wustl.edu/missions/lro/diviner.htm 80
-          show https://astrogeology.usgs.gov/search/map/moon_crater_database_v1_robbins 60
-          head_ https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/moon_pa_de440_200625.bpc
-          head_ https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440.bsp
-          head_ https://naif.jpl.nasa.gov/pub/naif/generic_kernels/lsk/naif0012.tls
-      - name: Horizons reference (Sun elevation/azimuth from lunar surface points)
+          echo "=== LOLA_5mpp index"; curl -sSL -m 60 https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/ | head -c 4000
+          echo; echo "=== LOLA_5mpp README"; curl -sSL -m 60 https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/README | head -c 6000
+          for u in https://pds-geosciences.wustl.edu/lro/lro-l-dlre-5-prp-v1/ https://pds-geosciences.wustl.edu/lro/lro-l-dlre-5-prp-v1/lrodlr_3001/ https://pds-geosciences.wustl.edu/lro/lro-l-dlre-5-prp-v1/lrodlr_3001/data/; do
+            echo; echo "=== $u"; curl -sSL -m 60 "$u" | sed 's/<[^>]*>/ /g' | tr -s ' \n' | head -c 1500; done
+          echo; echo "=== Robbins file head"
+          curl -sSL -m 120 "https://astrogeology.usgs.gov/ckan/dataset/f89f5478-b69a-486c-b9b5-30d7b0c5ad2b/resource/c4f25cc2-4f8a-4207-a845-5e176da3ac5a/download/lunar_crater_database_robbins_2018" -o robbins.bin -w "%{http_code} %{size_download} bytes\n"; file robbins.bin; head -c 600 robbins.bin
+      - name: Horizons reference table
         run: |
           set +e
-          for site in "0.0,-89.9" "129.78,-89.67" "0.0,-80.0" "23.47,0.67"; do
-            echo; echo "=== Horizons site lon,lat = $site"
-            curl -sSG -m 60 "https://ssd.jpl.nasa.gov/api/horizons.api" \
+          mkdir -p tools; out=tools/horizons_ref.csv; echo "site,lon,lat,time_utc,azimuth_deg,elevation_deg" > $out
+          while IFS=, read name lon lat; do
+            curl -sSG -m 90 "https://ssd.jpl.nasa.gov/api/horizons.api" \
               --data-urlencode "format=text" --data-urlencode "COMMAND='10'" --data-urlencode "OBJ_DATA='NO'" \
               --data-urlencode "MAKE_EPHEM='YES'" --data-urlencode "EPHEM_TYPE='OBSERVER'" --data-urlencode "CENTER='coord@301'" \
-              --data-urlencode "COORD_TYPE='GEODETIC'" --data-urlencode "SITE_COORD='${site},0'" \
-              --data-urlencode "START_TIME='2026-11-08 00:00'" --data-urlencode "STOP_TIME='2026-11-12 00:00'" \
-              --data-urlencode "STEP_SIZE='12 h'" --data-urlencode "QUANTITIES='4'" --data-urlencode "ANG_FORMAT='DEG'" --data-urlencode "CSV_FORMAT='YES'" | sed -n '/\$\$SOE/,/\$\$EOE/p'
-          done
+              --data-urlencode "COORD_TYPE='GEODETIC'" --data-urlencode "SITE_COORD='${lon},${lat},0'" \
+              --data-urlencode "START_TIME='2026-11-08 00:00'" --data-urlencode "STOP_TIME='2026-12-08 00:00'" \
+              --data-urlencode "STEP_SIZE='6 h'" --data-urlencode "QUANTITIES='4'" --data-urlencode "ANG_FORMAT='DEG'" --data-urlencode "CSV_FORMAT='YES'" \
+            | sed -n '/\$\$SOE/,/\$\$EOE/p' | grep -v '\$\$' | awk -F, -v n="$name" -v lo="$lon" -v la="$lat" '{gsub(/ /,"",$4); gsub(/ /,"",$5); print n","lo","la","$1","$4","$5}'
+          done > rows.txt <<'SITES'
+          pole89_9,0.0,-89.9
+          shackleton,129.78,-89.67
+          haworth,-5.0,-87.5
+          lat80,0.0,-80.0
+          apollo11,23.47,0.67
+          apollo15,3.63,26.13
+          farside45,-155.0,45.0
+          SITES
+          cat rows.txt >> $out; wc -l $out; head -3 $out
+      - name: Commit reference table
+        run: |
+          git config user.name "nyxos-ci"; git config user.email "ci@users.noreply.github.com"
+          git add tools/horizons_ref.csv && git commit -m "Horizons reference table [skip ci]" && git push
