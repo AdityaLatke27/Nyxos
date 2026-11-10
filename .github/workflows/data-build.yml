@@ -1,31 +1,55 @@
 name: build-landing-data
 on:
+  workflow_dispatch:
   push:
     branches: [data-build]
-  workflow_dispatch:
 permissions:
   contents: write
 jobs:
-  build:
+  tier:
     runs-on: ubuntu-latest
-    timeout-minutes: 300
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        tier: [a, b, c, d]
     steps:
       - uses: actions/checkout@v4
-      - name: Free disk and prepare work dir
-        run: |
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android || true
+      - run: |
           sudo mkdir -p /mnt/work && sudo chown $USER /mnt/work
-          df -h / /mnt | cat
-      - run: pip install -q rasterio numpy pillow
-      - name: Build tiles
-        run: python3 tools/build_landing_tiles.py public/landing
-      - name: Size report
-        run: du -sh public/landing public/landing/* | cat; ls public/landing | head
-      - name: Publish to landing-data branch
-        run: |
-          git config user.name "nyxos-data-bot"; git config user.email "bot@users.noreply.github.com"
-          git checkout --orphan landing-data
-          git rm -rf -q --cached . 
+          pip install -q rasterio numpy pillow
+      - run: python3 tools/build_landing_tiles.py out ${{ matrix.tier }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tier-${{ matrix.tier }}
+          path: out
+  publish:
+    needs: tier
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: parts
+          pattern: tier-*
+          merge-multiple: true
+      - run: |
+          mkdir -p public/landing && cp -r parts/* public/landing/
+          python3 - <<'PY'
+          import json,glob
+          m=None
+          for f in sorted(glob.glob('public/landing/manifest_*.json')):
+              d=json.load(open(f))
+              if m is None: m=d
+              else: m['tiers']+=d['tiers']
+          m['tiers'].sort(key=lambda t:t['id'])
+          json.dump(m,open('public/landing/manifest.json','w'),separators=(',',':'))
+          PY
+          rm -f public/landing/manifest_*.json
+          du -sh public/landing/* | cat
+          git config user.name nyxos-data-bot; git config user.email bot@users.noreply.github.com
+          git checkout --orphan landing-data; git rm -rf -q --cached .
           git add -f public/landing
           git commit -q -m "Landing hazard tiles from NASA PGDA LOLA [skip ci]"
           git push -f origin landing-data

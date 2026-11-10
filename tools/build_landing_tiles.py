@@ -18,6 +18,8 @@ from PIL import Image
 
 BASE = "https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/"
 OUT = sys.argv[1] if len(sys.argv) > 1 else "public/landing"
+ONLY = sys.argv[2] if len(sys.argv) > 2 else None
+INNER = {"a": 0.0, "b": 216400.0, "c": 304000.0, "d": 457440.0}
 WORK = os.environ.get("WORK", "/mnt/work")
 T = 256  # cells per tile edge
 
@@ -72,6 +74,9 @@ def main():
     )
     prev_half = 0.0
     for t in TIERS:
+        if ONLY and t["id"] != ONLY:
+            continue
+        prev_half = INNER[t["id"]]
         name = f"LDSM_{t['lat']}_{t['res']}MPP_ADJ.TIF"
         print("==", name, flush=True)
         path = fetch(name)
@@ -131,7 +136,7 @@ def main():
             if p and os.path.exists(p):
                 os.remove(p)
     os.makedirs(OUT, exist_ok=True)
-    with open(os.path.join(OUT, "manifest.json"), "w") as f:
+    with open(os.path.join(OUT, f"manifest_{ONLY or 'all'}.json"), "w") as f:
         json.dump(manifest, f, separators=(",", ":"))
     print("done", flush=True)
 
