@@ -8,33 +8,29 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Raster metadata (no full download)
+      - name: Product page text and TIFF tags
         run: |
           set +e
           pip install -q rasterio numpy pyproj
+          curl -sSL -m 60 https://pgda.gsfc.nasa.gov/products/90 | python3 -c "
+          import sys,re,html
+          t=sys.stdin.read()
+          t=re.sub(r'(?s)<(script|style).*?</\1>','',t); t=re.sub(r'<[^>]+>',' ',t); t=html.unescape(re.sub(r'\s+',' ',t))
+          print(t[:6000])"
           python3 - <<'PY'
-          import rasterio, json
+          import rasterio, numpy as np
           B="https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/"
-          urls=[B+"LDEM_83S_10MPP_ADJ.TIF",B+"LDEM_83S_10MPP_ADJ_ERR.TIF",B+"LDSM_83S_10MPP_ADJ.TIF",B+"LDEM_80S_20MPP_ADJ.TIF",B+"LDEM_75S_30MPP_ADJ.TIF",B+"LDEM_60S_60MPP_ADJ.TIF",
-                B+"LDEM_83N_10MPP_ADJ.TIF",B+"LDEM_80N_20MPP_ADJ.TIF",B+"LDRM_80S_1000MPP_ADJ_ROUGH_100M.TIF",B+"LDRM_80S_1000MPP_ADJ_ROUGH_400M.TIF",
-                "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site04/Site04_final_adj_5mpp_surf.tif","https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site04/Site04_final_adj_5mpp_slp.tif",
-                "https://pgda.gsfc.nasa.gov/data/MoonIllumination/AVGVISIB_85S_060M_201608.TIF"]
-          for u in urls:
+          for n in ["LDSM_83S_10MPP_ADJ.TIF","LDEM_83S_10MPP_ADJ_ERR.TIF","LDEM_83S_10MPP_ADJ_EFFRES.TIF","LDEM_83S_10MPP_ADJ_HILL.TIF","LDSM_83S_10MPP_ADJ_ERR.TIF","LDEM_80S_20MPP_ADJ_EFFRES.TIF"]:
             try:
               with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR"):
-                with rasterio.open("/vsicurl/"+u) as d:
-                  print("OK ",u.split("/")[-1], d.shape, d.dtypes[0], "nodata",d.nodata, "res",d.res, "bounds",tuple(round(b) for b in d.bounds), "tiled",d.profile.get("tiled"), "compress",d.profile.get("compress"), "ovr",d.overviews(1)[:4])
-                  print("    crs:", d.crs.to_proj4() if d.crs else None)
-            except Exception as e:
-              print("ERR",u.split("/")[-1], str(e)[:160])
+                with rasterio.open("/vsicurl/"+B+n) as d:
+                  print("##",n,d.dtypes[0],d.shape,"tags",d.tags(),d.tags(1),"desc",d.descriptions)
+                  # Shackleton rim neighbourhood: polar-stereographic x,y near (lat -89.9 lon 129)
+                  w=rasterio.windows.Window(21640-100,21640+100,200,200)
+                  a=d.read(1,window=w); print("   sample stats",np.nanmin(a),np.nanmedian(a),np.nanmax(a))
+            except Exception as e: print("ERR",n,str(e)[:150])
           PY
-      - name: PDS LRO directory tree
+      - name: North polar and cylindrical file names
         run: |
-          set +e
-          ls_() { curl -sSL -m 60 "$1" | grep -aoiE '<A HREF="[^"]+"' | sed 's/<A HREF=//I' | tr -d '"' | head -${2:-60}; }
-          echo "=== /lro/"; ls_ https://pds-geosciences.wustl.edu/lro/ 80
-          for d in lro-l-dlre-4-rdr-v1 ; do echo "=== $d"; ls_ https://pds-geosciences.wustl.edu/lro/$d/ 40; done
-      - name: ODE REST raw
-        run: |
-          set +e
-          curl -sSL -m 90 "https://oderest.rsl.wustl.edu/live2/?query=iipt&target=moon&results=v&output=JSON" | head -c 1500; echo
+          curl -sSL -m 60 https://pgda.gsfc.nasa.gov/products/90 | grep -aoE 'LDEM_[0-9]+N_[0-9]+MPP_ADJ[A-Z_]*\.TIF' | sort -u | head -20
+          for u in https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_83N_10MPP_ADJ.TIF https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_60N_60MPP_ADJ.TIF; do echo $u; curl -sSIL -m 30 $u | grep -iE 'HTTP/|content-length|content-type' | tr -d '\r'; done
