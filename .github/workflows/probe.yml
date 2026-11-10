@@ -8,51 +8,33 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: LOLA 5 m sites (all hrefs and sizes)
+      - name: Raster metadata (no full download)
         run: |
           set +e
-          curl -sSL -m 60 https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/ -o idx.html
-          grep -oE 'href=\./[^ >]+' idx.html | sed 's/href=\.\///' | grep -vE 'Clones|xyzi' | sort -u > lola_files.txt
-          wc -l lola_files.txt; grep -oE '^[A-Za-z0-9]+/' lola_files.txt | sort -u | tr '\n' ' '; echo
-          for f in $(grep -E '(surf|slp|slperr|toterr)\.tif$' lola_files.txt); do
-            printf "%s " "$f"; curl -sSIL -m 30 "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/$f" | grep -i content-length | tail -1 | tr -d '\r'; echo
-          done | head -80
-          echo "--- other sites listed in README (dir probes)"
-          for d in Haworth Shoemaker DM2 Site06; do echo "== $d"; curl -sSL -m 30 "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/$d/" | grep -oE 'href="[^"?]+"' | head -12; done
-      - name: Other LOLA polar and global DEM products
+          pip install -q rasterio numpy pyproj
+          python3 - <<'PY'
+          import rasterio, json
+          B="https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/"
+          urls=[B+"LDEM_83S_10MPP_ADJ.TIF",B+"LDEM_83S_10MPP_ADJ_ERR.TIF",B+"LDSM_83S_10MPP_ADJ.TIF",B+"LDEM_80S_20MPP_ADJ.TIF",B+"LDEM_75S_30MPP_ADJ.TIF",B+"LDEM_60S_60MPP_ADJ.TIF",
+                B+"LDEM_83N_10MPP_ADJ.TIF",B+"LDEM_80N_20MPP_ADJ.TIF",B+"LDRM_80S_1000MPP_ADJ_ROUGH_100M.TIF",B+"LDRM_80S_1000MPP_ADJ_ROUGH_400M.TIF",
+                "https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site04/Site04_final_adj_5mpp_surf.tif","https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site04/Site04_final_adj_5mpp_slp.tif",
+                "https://pgda.gsfc.nasa.gov/data/MoonIllumination/AVGVISIB_85S_060M_201608.TIF"]
+          for u in urls:
+            try:
+              with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR"):
+                with rasterio.open("/vsicurl/"+u) as d:
+                  print("OK ",u.split("/")[-1], d.shape, d.dtypes[0], "nodata",d.nodata, "res",d.res, "bounds",tuple(round(b) for b in d.bounds), "tiled",d.profile.get("tiled"), "compress",d.profile.get("compress"), "ovr",d.overviews(1)[:4])
+                  print("    crs:", d.crs.to_proj4() if d.crs else None)
+            except Exception as e:
+              print("ERR",u.split("/")[-1], str(e)[:160])
+          PY
+      - name: PDS LRO directory tree
         run: |
           set +e
-          for u in \
-            https://pgda.gsfc.nasa.gov/products/90 \
-            https://pgda.gsfc.nasa.gov/products/78 \
-            http://imbrium.mit.edu/DATA/LOLA_GDR/POLAR/IMG/ \
-            http://imbrium.mit.edu/DATA/LOLA_GDR/CYLINDRICAL/IMG/ ; do
-            echo "=== $u"; curl -sSL -m 60 "$u" | grep -aoiE 'href="[^"?#]+(IMG|LBL|TIF|tif|img)"' | head -60; done
-          for f in LDEM_80S_20M.IMG LDEM_85S_10M.IMG LDEM_75S_30M.IMG LDEM_80S_20M.LBL; do printf "%s " $f; curl -sSIL -m 30 "http://imbrium.mit.edu/DATA/LOLA_GDR/POLAR/IMG/$f" | grep -iE 'HTTP/|content-length' | tr -d '\r' | tr '\n' ' '; echo; done
-      - name: Robbins database contents
+          ls_() { curl -sSL -m 60 "$1" | grep -aoiE '<A HREF="[^"]+"' | sed 's/<A HREF=//I' | tr -d '"' | head -${2:-60}; }
+          echo "=== /lro/"; ls_ https://pds-geosciences.wustl.edu/lro/ 80
+          for d in lro-l-dlre-4-rdr-v1 ; do echo "=== $d"; ls_ https://pds-geosciences.wustl.edu/lro/$d/ 40; done
+      - name: ODE REST raw
         run: |
           set +e
-          curl -sSL -m 180 "https://astrogeology.usgs.gov/ckan/dataset/f89f5478-b69a-486c-b9b5-30d7b0c5ad2b/resource/c4f25cc2-4f8a-4207-a845-5e176da3ac5a/download/lunar_crater_database_robbins_2018" -o r.zip
-          unzip -l r.zip | head -40
-          unzip -q -o r.zip -d rb; find rb -iname '*.csv' | head; for f in $(find rb -iname '*.csv' | head -3); do echo "== $f"; wc -l $f; head -c 900 $f; echo; done
-          find rb -iname '*.xml' -o -iname '*readme*' | head -5
-      - name: ODE REST (Diviner, LEND, LAMP, Mini-RF product types)
-        run: |
-          set +e
-          echo "=== instrument/product types"; curl -sSL -m 90 "https://oderest.rsl.wustl.edu/live2/?query=iipt&target=moon&results=v&output=JSON" | python3 -c "
-          import sys,json
-          d=json.load(sys.stdin)
-          for x in d.get('ODEResults',{}).get('IIPTypes',{}).get('IIPT',[]):
-            if x.get('IHID')=='LRO': print(x.get('IID'),x.get('PT'),x.get('PTName'),x.get('NumProducts') if 'NumProducts' in x else '')
-          " 2>&1 | head -80
-      - name: PDS directory guesses for Diviner, LEND, LAMP, Mini-RF
-        run: |
-          set +e
-          curl -sSL -m 60 https://pds-geosciences.wustl.edu/lro/ | sed 's/<[^>]*>/ /g' | tr -s ' \n' | head -c 2500; echo
-          for u in https://pds-geosciences.wustl.edu/lro/lro-l-dlre-5-prp-v1/ https://pds-geosciences.wustl.edu/lro/lro-l-dlre-4-rdr-v1/ https://pds-geosciences.wustl.edu/lro/lro-l-lend-4-resmap-v1/ https://pds-geosciences.wustl.edu/lro/lro-l-mrflro-5-cpr-v1/ ; do printf "%s -> " $u; curl -sSIL -m 30 $u | grep -iE '^HTTP' | tail -1; done
-          echo "=== diviner.ucla.edu"; curl -sSL -m 60 https://www.diviner.ucla.edu/data | sed 's/<[^>]*>/ /g' | tr -s ' \n' | head -c 1800
-      - name: PGDA illumination products
-        run: |
-          set +e
-          curl -sSL -m 60 https://pgda.gsfc.nasa.gov/products/69 | grep -aoE 'https://pgda.gsfc.nasa.gov/data/MoonIllumination/[A-Za-z0-9_]+\.(TIF|tif)' | sort -u
-          for f in AVGVISIB_85S_060M_201608.TIF AVGVISIB_75S_120M_201608.TIF; do printf "%s " $f; curl -sSIL -m 30 https://pgda.gsfc.nasa.gov/data/MoonIllumination/$f | grep -i content-length | tail -1 | tr -d '\r'; echo; done
+          curl -sSL -m 90 "https://oderest.rsl.wustl.edu/live2/?query=iipt&target=moon&results=v&output=JSON" | head -c 1500; echo
