@@ -76,6 +76,17 @@ describe('slope verdicts', () => {
   })
 })
 
+describe('headline', () => {
+  it('names only the failed verdict', async () => {
+    const f = field('a', 3, 0)
+    const p = polarXY(-89.5, 40)
+    await f.ensure(p.x, p.y, 2500)
+    const a = evaluate({ lat: -89.5, lon: 40, startMs: Date.UTC(2026, 10, 15), profile: NASA_HLS, terrain: flat, hazard: f, scanDays: 8 })
+    expect(a.safety.status).toBe('PASS')
+    expect(a.headline.text).not.toMatch(/All gating constraints met/)
+  })
+})
+
 describe('EVA reach', () => {
   it('is blocked when the landing cell itself is steeper than the limit', async () => {
     const f = field('a', 25, 100)

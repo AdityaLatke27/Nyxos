@@ -515,8 +515,8 @@ export function evaluate(inp: EvalInput): Assessment {
   let headline: Assessment['headline']
   const feasibleNow = windows.litAndEarth.length > 0
   if (safety.status === 'FAIL' || operations.status === 'FAIL') {
-    const why = [...safety.reasons, ...operations.reasons][0]
-    headline = { level: 'NOT_RECOMMENDED', text: `Not suitable for ${profile.name} as modelled. ${why}` }
+    const why = [safety, operations].filter((v) => v.status === 'FAIL').flatMap((v) => v.reasons)
+    headline = { level: 'NOT_RECOMMENDED', text: `Not suitable for ${profile.name} as modelled. ${why.join(' ')}` }
   } else if (safety.status === 'NOT_EVALUATED') {
     headline = { level: 'CANNOT_ASSESS', text: 'Landing safety cannot be assessed here: the slope data is missing or too coarse. Operations results are shown, but they do not make a landing safe.' }
   } else if (safety.status === 'PASS' && operations.status === 'PASS') {
