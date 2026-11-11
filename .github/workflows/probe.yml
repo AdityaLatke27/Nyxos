@@ -8,29 +8,27 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Product page text and TIFF tags
+      - name: Directory listings
         run: |
           set +e
-          pip install -q rasterio numpy pyproj
-          curl -sSL -m 60 https://pgda.gsfc.nasa.gov/products/90 | python3 -c "
+          ls_() { echo "#### $1"; curl -sSL -m 60 -A "Mozilla/5.0 NYXOS" "$1" | grep -aoE 'href="[^"?][^"]*"' | head -${2:-60}; }
+          ls_ https://pgda.gsfc.nasa.gov/data/ 80
+          ls_ https://pgda.gsfc.nasa.gov/data/MoonIllumination/ 60
+          ls_ https://pgda.gsfc.nasa.gov/data/LOLA_PSR/ 40
+          ls_ https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/ 40
+          ls_ https://pds-geosciences.wustl.edu/lro/lro-l-dlre-4-rdr-v1/lrodlr_1001/data/gdr/polar/ 60
+          ls_ https://pds-geosciences.wustl.edu/lro/lro-l-dlre-4-rdr-v1/lrodlr_1001/ 40
+          ls_ https://pds-geosciences.wustl.edu/lro/lro-l-lamp-4-gdr-v1/ 30
+          ls_ https://pds-geosciences.wustl.edu/lro/lro-l-mrflro-5-cpr-v1/ 30
+          ls_ https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/ 60
+          ls_ https://naif.jpl.nasa.gov/pub/naif/generic_kernels/fk/satellites/ 60
+          ls_ https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/ 30
+      - name: PGDA page text for products 
+        run: |
+          for n in 85 86 87 88 89 91 92 93; do
+            echo "#### products/$n"; curl -sSL -m 40 -A "Mozilla/5.0 NYXOS" https://pgda.gsfc.nasa.gov/products/$n | python3 -c "
           import sys,re,html
           t=sys.stdin.read()
           t=re.sub(r'(?s)<(script|style).*?</\1>','',t); t=re.sub(r'<[^>]+>',' ',t); t=html.unescape(re.sub(r'\s+',' ',t))
-          print(t[:6000])"
-          python3 - <<'PY'
-          import rasterio, numpy as np
-          B="https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/"
-          for n in ["LDSM_83S_10MPP_ADJ.TIF","LDEM_83S_10MPP_ADJ_ERR.TIF","LDEM_83S_10MPP_ADJ_EFFRES.TIF","LDEM_83S_10MPP_ADJ_HILL.TIF","LDSM_83S_10MPP_ADJ_ERR.TIF","LDEM_80S_20MPP_ADJ_EFFRES.TIF"]:
-            try:
-              with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR"):
-                with rasterio.open("/vsicurl/"+B+n) as d:
-                  print("##",n,d.dtypes[0],d.shape,"tags",d.tags(),d.tags(1),"desc",d.descriptions)
-                  # Shackleton rim neighbourhood: polar-stereographic x,y near (lat -89.9 lon 129)
-                  w=rasterio.windows.Window(21640-100,21640+100,200,200)
-                  a=d.read(1,window=w); print("   sample stats",np.nanmin(a),np.nanmedian(a),np.nanmax(a))
-            except Exception as e: print("ERR",n,str(e)[:150])
-          PY
-      - name: North polar and cylindrical file names
-        run: |
-          curl -sSL -m 60 https://pgda.gsfc.nasa.gov/products/90 | grep -aoE 'LDEM_[0-9]+N_[0-9]+MPP_ADJ[A-Z_]*\.TIF' | sort -u | head -20
-          for u in https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_83N_10MPP_ADJ.TIF https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_60N_60MPP_ADJ.TIF; do echo $u; curl -sSIL -m 30 $u | grep -iE 'HTTP/|content-length|content-type' | tr -d '\r'; done
+          print(t[:700])"
+          done
