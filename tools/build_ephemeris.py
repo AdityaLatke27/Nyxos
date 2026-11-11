@@ -44,7 +44,7 @@ FRAME = "MOON_ME_DE440_ME421"
 START = "2026-01-01T00:00:00"
 STEP = 3600
 N = 3652 * 24 + 1
-et0 = sp.str2et(START + " UTC")
+et0 = sp.str2et(START)
 ets = et0 + STEP * np.arange(N)
 out = np.zeros((N, 7), dtype="<f4")
 for i, et in enumerate(ets):
