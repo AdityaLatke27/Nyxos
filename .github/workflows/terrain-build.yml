@@ -1,0 +1,49 @@
+name: build-terrain-data
+on:
+  workflow_dispatch:
+  push:
+    branches: [data-terrain]
+permissions:
+  contents: write
+jobs:
+  terrain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          sudo mkdir -p /mnt/work && sudo chown $USER /mnt/work
+          sudo apt-get install -y -qq aria2 >/dev/null
+          pip install -q rasterio numpy pillow
+      - run: python3 tools/build_terrain_tiles.py out
+      - uses: actions/upload-artifact@v4
+        with: { name: terrain, path: out }
+  science:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          sudo mkdir -p /mnt/work && sudo chown $USER /mnt/work
+          sudo apt-get install -y -qq aria2 >/dev/null
+          pip install -q rasterio numpy pillow netCDF4
+      - run: python3 tools/build_science_grid.py out
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: science, path: out }
+  publish:
+    needs: [terrain, science]
+    if: always() && needs.terrain.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { path: parts, merge-multiple: true }
+      - run: |
+          mkdir -p public/landing && cp -r parts/* public/landing/
+          du -sh public/landing/* | cat
+          git config user.name nyxos-data-bot; git config user.email bot@users.noreply.github.com
+          git checkout --orphan landing-terrain; git rm -rf -q --cached .
+          git add -f public/landing
+          git commit -q -m "Landing terrain and science data [skip ci]"
+          git push -f origin landing-terrain
