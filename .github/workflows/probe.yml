@@ -10,14 +10,9 @@ jobs:
     steps:
       - run: |
           set +e
-          for n in 90 98; do
-            echo "#### products/$n"; curl -sSL -m 40 -A "Mozilla/5.0 NYXOS" https://pgda.gsfc.nasa.gov/products/$n | python3 -c "
-          import sys,re,html
-          t=sys.stdin.read()
-          t=re.sub(r'(?s)<(script|style).*?</\1>','',t)
-          fl=re.findall(r'href=\"([^\"]+\.(?:TIF|tif))\"',t)
-          t=re.sub(r'<[^>]+>',' ',t); t=html.unescape(re.sub(r'\s+',' ',t))
-          print(t[:6000]); print('FILES'); print('\n'.join(fl))"
-          done
-          for u in LDRM_83S_10MPP_ADJ LDRM_80S_20MPP_ADJ LDRM_75S_30MPP_ADJ LDRM_60S_60MPP_ADJ LPSR_83S_10MPP_ADJ LPSR_85S_10MPP_ADJ LPSR_80S_20MPP_ADJ LPSR_75S_30MPP_ADJ LPSR_60S_60MPP_ADJ LDEM_83S_10MPP_ADJ_ERR LDEM_83S_10MPP_ADJ_EFFRES LDEC_83S_10MPP_ADJ; do
-            echo $u; curl -sSIL -m 30 -A "Mozilla/5.0 NYXOS" https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/$u.TIF | grep -aiE "^HTTP|content-length"; done
+          sudo apt-get install -y -qq gdal-bin >/dev/null 2>&1
+          B=https://pgda.gsfc.nasa.gov/data
+          for u in LOLA_20mpp/LDRM_80S_50MPP_ADJ_ROUGH_100M.TIF LOLA_20mpp/LDRM_80S_50MPP_ADJ_SLP_100M.TIF LOLA_20mpp/LPSR_80S_20MPP_ADJ.TIF LOLA_20mpp/LDEM_80S_80MPP_ADJ.TIF LOLA_20mpp/LDSM_83S_10MPP_ADJ.TIF MoonIllumination/AVGVISIB_85S_060M_201608.TIF; do
+            echo "#### $u"; gdalinfo -stats "/vsicurl/$B/$u" 2>&1 | grep -vE "^\s+(Overviews|Metadata)" | head -45; done
+          echo "#### LPSR csv head"; curl -sSL -m 60 -r 0-1500 $B/LOLA_20mpp/LPSR_80S_20MPP_ADJ.CSV | head -5
+          for u in "https://luna1.diviner.ucla.edu/~jpierre/diviner/" "https://luna1.diviner.ucla.edu/~jpierre/diviner/level4_rdr_v1/"; do echo "#### $u"; curl -sSL --ciphers 'DEFAULT@SECLEVEL=0' -k -m 60 "$u" | grep -aoE 'href="[^"?][^"]*"' | head -60; done
