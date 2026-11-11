@@ -10,14 +10,9 @@ jobs:
     steps:
       - run: |
           set +e
-          L() { echo "#### $1"; curl -sSL --ciphers 'DEFAULT@SECLEVEL=0' -k -m 60 -A "Mozilla/5.0 NYXOS" "$1" | grep -aoE 'href="[^"?][^"]*"' | grep -v -E 'css|mailto|nasa.gov|wustl.edu/css|firstgov' | head -${2:-80}; }
-          L http://luna1.diviner.ucla.edu/~jpierre/diviner/level4_polar/ 60
-          L http://luna1.diviner.ucla.edu/~jpierre/diviner/level4_polar/24x6_240m/ 60
-          L http://luna1.diviner.ucla.edu/~jpierre/diviner/level4_polar/24x6_240m/browse_binaries/ 30
-          L http://luna1.diviner.ucla.edu/~jpierre/diviner/level4_raster_data/ 60
-          L https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/ 60
-          L https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_polar/ 60
-          L https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_prp/ 60
-          for u in https://astropedia.astrogeology.usgs.gov/download/Moon/Research/Craters/lunar_crater_database_robbins_2018 https://pdsimage2.wr.usgs.gov/Individual_Investigations/moon_lro.kaguya_multi_craterdatabase_robbins_2018/ https://pdsimage2.wr.usgs.gov/Individual_Investigations/moon_lro_lroc_boulderdata_watkins_2018/; do echo "#### $u"; curl -sSIL -m 30 -A "Mozilla/5.0 NYXOS" "$u" | grep -aiE "^HTTP|content-length|location|content-disp"; done
-          L https://pdsimage2.wr.usgs.gov/Individual_Investigations/moon_lro.kaguya_multi_craterdatabase_robbins_2018/ 40
-          L https://pdsimage2.wr.usgs.gov/Individual_Investigations/moon_lro_lroc_boulderdata_watkins_2018/ 40
+          C() { curl -sSL --ciphers 'DEFAULT@SECLEVEL=0' -k -m 90 -A "Mozilla/5.0 NYXOS" "$@"; }
+          B=http://luna1.diviner.ucla.edu/~jpierre/diviner
+          echo "#### aareadme"; C $B/level4_polar/aareadme.txt | head -120
+          for d in 24x6_240m/pds 24x6_240m/additional_maps additional_maps hourly_maps pds; do echo "#### $d"; C $B/level4_polar/$d/ | grep -aoE 'href="[^"?/][^"]*"' | head -25; done
+          echo "#### tbol_max desc"; C $B/level4_raster_data/diviner_tbol_max_description.txt | head -30
+          echo "#### crater dl"; curl -sSIL -m 120 https://astropedia.astrogeology.usgs.gov/download/Moon/Research/Craters/lunar_crater_database_robbins_2018/ | grep -aiE "^HTTP|content-length|location"
