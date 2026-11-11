@@ -10,7 +10,7 @@ html:has(.ld-root),body:has(.ld-root),#root:has(.ld-root){height:auto;overflow-y
 .ld-actions button:hover:not(:disabled){background:rgba(111,195,255,.28)}
 .ld-actions button:disabled{opacity:.4;cursor:default}
 button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid #6fc3ff;outline-offset:2px}
-.ld-setup{display:grid;grid-template-columns:minmax(300px,460px) 1fr;gap:26px;padding:18px;border-radius:18px;background:var(--glass-bg-strong);border:1px solid var(--glass-border);box-shadow:var(--glass-shadow)}
+.ld-setup{display:grid;grid-template-columns:minmax(320px,1.25fr) minmax(300px,1fr);gap:26px;padding:18px;border-radius:18px;background:var(--glass-bg-strong);border:1px solid var(--glass-border);box-shadow:var(--glass-shadow)}
 .pp-map{width:100%;height:auto;display:block;border-radius:50%;cursor:crosshair;background:#000}
 .ld-hint{font-size:12.5px;color:#93a3bd;line-height:1.45;margin:8px 0 0}
 .ld-form{display:flex;flex-direction:column;gap:12px;min-width:0}
@@ -63,3 +63,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
  .ld-row summary{grid-template-columns:1fr auto}.ld-row .v{grid-column:1/-1;order:3}
 }
 @media (prefers-reduced-motion:reduce){.ld-stale{transition:none}}
+
+.ld-seg{display:inline-flex;margin-bottom:10px;border:1px solid rgba(255,255,255,.16);border-radius:10px;overflow:hidden}
+.ld-seg button{font:500 13px 'Space Grotesk',sans-serif;padding:6px 14px;background:transparent;color:#93a3bd;border:0;cursor:pointer}
+.ld-seg button.on{background:rgba(111,195,255,.2);color:#e4ecf8}
+.l3-stage{position:relative;width:100%;aspect-ratio:1/1;max-height:640px;border-radius:14px;overflow:hidden;background:#000;touch-action:none}
+.l3-stage canvas{display:block}
+.l3-overlay{position:absolute;inset:0;pointer-events:none;z-index:2}
+.l3-tip{position:absolute;z-index:4;padding:.38rem .6rem;border-radius:8px;background:var(--glass-bg-strong);border:1px solid var(--glass-border);font-size:.72rem;white-space:nowrap;pointer-events:none;font-variant-numeric:tabular-nums}
+.l3-help{position:absolute;left:10px;bottom:8px;margin:0;z-index:3;font-size:11.5px;color:rgba(228,236,248,.75);text-shadow:0 1px 3px #000;pointer-events:none}

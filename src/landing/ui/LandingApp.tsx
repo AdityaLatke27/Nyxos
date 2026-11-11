@@ -11,6 +11,7 @@ import { NASA_HLS, customProfile, type LanderProfile } from '../profile'
 import { INSTRUMENTS, nearbyFeatures, nearbyMissions, shadowScan, yearSunDirs, type ShadowScan } from '../nearby'
 import { buildReport, downloadText, reportCsv, type ReportContext } from '../report'
 import PolarPicker from './PolarPicker'
+import Landing3D, { webglAvailable } from './Landing3D'
 import { DARK, HazardMap, HorizonChart, ShadowMap, SlopeHistogram, TimelineChart, WindowCalendar } from './Charts'
 import { STATUS_GLYPH, STATUS_LABEL, fmtDur, fmtLat, fmtLon, fmtUtc, windowLines } from './format'
 import './landing.css'
@@ -59,6 +60,7 @@ export default function LandingApp() {
   const [stay, setStay] = useState(NASA_HLS.stayDays.value)
   const [start, setStart] = useState(nextMidnight())
   const [query, setQuery] = useState('')
+  const [mode3d, setMode3d] = useState(() => params.get('map') !== '2d' && webglAvailable())
 
   const profile: LanderProfile = useMemo(() => {
     const base = profileId === 'nasa-hls' ? NASA_HLS : customProfile({ slope: cust.slope, evaSlope: cust.evaSlope, lit: cust.lit, earth: cust.earth, band: cust.polar ? 6 : null })
@@ -149,8 +151,16 @@ export default function LandingApp() {
 
         <section className="ld-setup" aria-label="Site and mission">
           <div className="ld-mapwrap">
-            <PolarPicker sites={candidates} lat={site.lat} lon={site.lon} onPick={pick} imgSrc="/sim/lro_pole.webp" />
-            <p className="ld-hint">Click the map or a marker. Amber markers are NASA Artemis III regions and candidate sites in NYXOS.</p>
+            <div className="ld-seg" role="group" aria-label="Map type">
+              <button className={mode3d ? 'on' : ''} onClick={() => setMode3d(true)}>3D terrain</button>
+              <button className={!mode3d ? 'on' : ''} onClick={() => setMode3d(false)}>2D map</button>
+            </div>
+            {mode3d && terrain ? (
+              <Landing3D assets={assets} terrain={terrain} site={site} timeMs={start} onPick={pick} />
+            ) : (
+              <PolarPicker sites={candidates} lat={site.lat} lon={site.lon} onPick={pick} imgSrc="/sim/lro_pole.webp" />
+            )}
+            <p className="ld-hint">{mode3d ? 'Shadows show the Sun at your landing time. Click any ground to analyse it; use the place list for named sites.' : 'Click the map or a marker. Amber markers are NASA Artemis III regions and candidate sites in NYXOS.'}</p>
           </div>
           <div className="ld-form">
             <label>Place
