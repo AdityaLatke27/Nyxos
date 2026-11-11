@@ -1,7 +1,7 @@
 import { forwardRef, type ReactNode } from 'react'
 import './navRail.css'
 
-export type NavId = 'craters' | 'compare' | 'windows' | 'data'
+export type NavId = 'craters' | 'compare' | 'landing' | 'data'
 
 interface Item {
   id: NavId
@@ -42,15 +42,16 @@ const ITEMS: Item[] = [
     ),
   },
   {
-    id: 'windows',
-    label: 'Power & Comms Windows',
-    short: 'Windows',
+    id: 'landing',
+    label: 'Landing Analysis',
+    short: 'Landing',
+    href: '/app/landing',
     icon: (
       <svg viewBox="0 0 24 24" {...ICON}>
-        <path d="M3 17.5h18" />
-        <path d="M7 17.5a5 5 0 0 1 10 0" />
-        <path d="M12 6.5v2M5.8 10l1.4 1.4M18.2 10l-1.4 1.4" />
-        <path d="M8 21h8" />
+        <path d="M12 3v11" />
+        <path d="M8 10.5l4 4 4-4" />
+        <path d="M4 20.5h16" />
+        <path d="M7 20.5l1.6-3h6.8l1.6 3" />
       </svg>
     ),
   },
