@@ -8,15 +8,16 @@ permissions:
 jobs:
   tier:
     runs-on: ubuntu-latest
-    timeout-minutes: 340
+    timeout-minutes: 355
     strategy:
       fail-fast: false
       matrix:
-        tier: [a, b, c, d]
+        tier: [a]
     steps:
       - uses: actions/checkout@v4
       - run: |
           sudo mkdir -p /mnt/work && sudo chown $USER /mnt/work
+          sudo apt-get install -y -qq aria2 >/dev/null
           pip install -q rasterio numpy pillow
       - run: python3 tools/build_landing_tiles.py out ${{ matrix.tier }}
       - uses: actions/upload-artifact@v4
@@ -35,7 +36,9 @@ jobs:
           pattern: tier-*
           merge-multiple: true
       - run: |
-          mkdir -p public/landing && cp -r parts/* public/landing/
+          mkdir -p public/landing
+          git fetch -q origin landing-data && git archive FETCH_HEAD public/landing | tar -x
+          cp -r parts/* public/landing/
           python3 - <<'PY'
           import json,glob
           m=None
@@ -43,6 +46,10 @@ jobs:
               d=json.load(open(f))
               if m is None: m=d
               else: m['tiers']+=d['tiers']
+          old=json.load(open('public/landing/manifest.json')) if __import__('os').path.exists('public/landing/manifest.json') else None
+          if old:
+              ids={t['id'] for t in m['tiers']}
+              m['tiers']+=[t for t in old['tiers'] if t['id'] not in ids]
           m['tiers'].sort(key=lambda t:t['id'])
           json.dump(m,open('public/landing/manifest.json','w'),separators=(',',':'))
           PY

@@ -36,9 +36,9 @@ def fetch(name):
     dst = os.path.join(WORK, name)
     if os.path.exists(dst) and os.path.getsize(dst) > 1e6:
         return dst
-    for attempt in range(6):
-        r = subprocess.run(["curl", "-sSL", "-f", "-C", "-", "--retry", "3", "-A", "Mozilla/5.0 NYXOS-data-build",
-                            "-o", dst, BASE + name])
+    for attempt in range(4):
+        r = subprocess.run(["aria2c", "-x", "16", "-s", "16", "-k", "8M", "-c", "--retry-wait=20", "--max-tries=5",
+                            "--user-agent=Mozilla/5.0 NYXOS-data-build", "-d", WORK, "-o", name, BASE + name])
         if r.returncode == 0:
             return dst
         print("  retry", name, attempt, flush=True)
