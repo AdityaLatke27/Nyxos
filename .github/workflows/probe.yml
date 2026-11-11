@@ -10,9 +10,14 @@ jobs:
     steps:
       - run: |
           set +e
-          sudo apt-get install -y -qq gdal-bin >/dev/null 2>&1
-          B=https://pgda.gsfc.nasa.gov/data
-          for u in LOLA_20mpp/LDRM_80S_50MPP_ADJ_ROUGH_100M.TIF LOLA_20mpp/LDRM_80S_50MPP_ADJ_SLP_100M.TIF LOLA_20mpp/LPSR_80S_20MPP_ADJ.TIF LOLA_20mpp/LDEM_80S_80MPP_ADJ.TIF LOLA_20mpp/LDSM_83S_10MPP_ADJ.TIF MoonIllumination/AVGVISIB_85S_060M_201608.TIF; do
-            echo "#### $u"; gdalinfo -stats "/vsicurl/$B/$u" 2>&1 | grep -vE "^\s+(Overviews|Metadata)" | head -45; done
-          echo "#### LPSR csv head"; curl -sSL -m 60 -r 0-1500 $B/LOLA_20mpp/LPSR_80S_20MPP_ADJ.CSV | head -5
-          for u in "https://luna1.diviner.ucla.edu/~jpierre/diviner/" "https://luna1.diviner.ucla.edu/~jpierre/diviner/level4_rdr_v1/"; do echo "#### $u"; curl -sSL --ciphers 'DEFAULT@SECLEVEL=0' -k -m 60 "$u" | grep -aoE 'href="[^"?][^"]*"' | head -60; done
+          L() { echo "#### $1"; curl -sSL --ciphers 'DEFAULT@SECLEVEL=0' -k -m 60 -A "Mozilla/5.0 NYXOS" "$1" | grep -aoE 'href="[^"?][^"]*"' | grep -v -E 'css|mailto|nasa.gov|wustl.edu/css|firstgov' | head -${2:-80}; }
+          L http://luna1.diviner.ucla.edu/~jpierre/diviner/level4_polar/ 60
+          L http://luna1.diviner.ucla.edu/~jpierre/diviner/level4_polar/24x6_240m/ 60
+          L http://luna1.diviner.ucla.edu/~jpierre/diviner/level4_polar/24x6_240m/browse_binaries/ 30
+          L http://luna1.diviner.ucla.edu/~jpierre/diviner/level4_raster_data/ 60
+          L https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/ 60
+          L https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_polar/ 60
+          L https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_prp/ 60
+          for u in https://astropedia.astrogeology.usgs.gov/download/Moon/Research/Craters/lunar_crater_database_robbins_2018 https://pdsimage2.wr.usgs.gov/Individual_Investigations/moon_lro.kaguya_multi_craterdatabase_robbins_2018/ https://pdsimage2.wr.usgs.gov/Individual_Investigations/moon_lro_lroc_boulderdata_watkins_2018/; do echo "#### $u"; curl -sSIL -m 30 -A "Mozilla/5.0 NYXOS" "$u" | grep -aiE "^HTTP|content-length|location|content-disp"; done
+          L https://pdsimage2.wr.usgs.gov/Individual_Investigations/moon_lro.kaguya_multi_craterdatabase_robbins_2018/ 40
+          L https://pdsimage2.wr.usgs.gov/Individual_Investigations/moon_lro_lroc_boulderdata_watkins_2018/ 40
