@@ -1,34 +1,42 @@
 name: probe-nasa-data
 on:
   push:
-    branches: [data-probe]
+    branches: [probe2]
 permissions:
   contents: read
 jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Directory listings
+      - name: Listings
         run: |
           set +e
-          ls_() { echo "#### $1"; curl -sSL -m 60 -A "Mozilla/5.0 NYXOS" "$1" | grep -aoE 'href="[^"?][^"]*"' | head -${2:-60}; }
-          ls_ https://pgda.gsfc.nasa.gov/data/ 80
-          ls_ https://pgda.gsfc.nasa.gov/data/MoonIllumination/ 60
-          ls_ https://pgda.gsfc.nasa.gov/data/LOLA_PSR/ 40
-          ls_ https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/ 40
-          ls_ https://pds-geosciences.wustl.edu/lro/lro-l-dlre-4-rdr-v1/lrodlr_1001/data/gdr/polar/ 60
-          ls_ https://pds-geosciences.wustl.edu/lro/lro-l-dlre-4-rdr-v1/lrodlr_1001/ 40
-          ls_ https://pds-geosciences.wustl.edu/lro/lro-l-lamp-4-gdr-v1/ 30
-          ls_ https://pds-geosciences.wustl.edu/lro/lro-l-mrflro-5-cpr-v1/ 30
-          ls_ https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/ 60
-          ls_ https://naif.jpl.nasa.gov/pub/naif/generic_kernels/fk/satellites/ 60
-          ls_ https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/ 30
-      - name: PGDA page text for products 
+          ls_() { echo "#### $1"; curl -sSL -m 60 -A "Mozilla/5.0 NYXOS" "$1" | grep -aoE 'href="[^"?][^"]*"' | head -${2:-80}; }
+          ls_ https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/ 200
+          ls_ https://pgda.gsfc.nasa.gov/data/ 120
+          ls_ https://luna1.diviner.ucla.edu/~jpierre/diviner/level4_rdr_v1/ 40
+          ls_ https://luna1.diviner.ucla.edu/~jpierre/diviner/ 60
+          ls_ https://pds-geosciences.wustl.edu/lro/ 60
+          ls_ https://pds-geosciences.wustl.edu/lro/lro-l-lend-4-cdr-v1/ 40
+          ls_ https://pds-geosciences.wustl.edu/lro/lro-l-dlre-5-rdr-v1/ 40
+          ls_ https://pds-geosciences.wustl.edu/lro/lro-l-dlre-4-rdr-v1/ 40
+          ls_ https://pds-geosciences.wustl.edu/lro/lro-l-lend-5-rdr-v1/ 40
+      - name: PGDA product pages (search for relevant)
         run: |
-          for n in 85 86 87 88 89 91 92 93; do
-            echo "#### products/$n"; curl -sSL -m 40 -A "Mozilla/5.0 NYXOS" https://pgda.gsfc.nasa.gov/products/$n | python3 -c "
+          set +e
+          curl -sSL -m 60 -A "Mozilla/5.0 NYXOS" https://pgda.gsfc.nasa.gov/products/ | python3 -c "
           import sys,re,html
           t=sys.stdin.read()
-          t=re.sub(r'(?s)<(script|style).*?</\1>','',t); t=re.sub(r'<[^>]+>',' ',t); t=html.unescape(re.sub(r'\s+',' ',t))
-          print(t[:700])"
-          done
+          for m in re.finditer(r'href=\"(/products/\d+)\"[^>]*>([^<]*)<',t): print(m.group(1),html.unescape(m.group(2)).strip())" | head -150
+      - name: HEAD checks
+        run: |
+          set +e
+          for u in \
+            https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_83S_10MPP_ADJ.TIF \
+            https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_80S_20MPP_ADJ.TIF \
+            https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_75S_30MPP_ADJ.TIF \
+            https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_60S_60MPP_ADJ.TIF \
+            https://pgda.gsfc.nasa.gov/data/MoonIllumination/AVGVISIB_85S_060M_201608.TIF \
+            https://pgda.gsfc.nasa.gov/data/MoonIllumination/AVGVISIB_75S_120M_201608.TIF \
+            https://pgda.gsfc.nasa.gov/data/MoonIllumination/AVGVISIB_65S_240M_201608.TIF ; do
+            echo "$u"; curl -sSIL -m 30 -A "Mozilla/5.0 NYXOS" "$u" | grep -aiE "^HTTP|content-length"; done
