@@ -8,35 +8,21 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Listings
+      - name: Product pages
         run: |
           set +e
-          ls_() { echo "#### $1"; curl -sSL -m 60 -A "Mozilla/5.0 NYXOS" "$1" | grep -aoE 'href="[^"?][^"]*"' | head -${2:-80}; }
-          ls_ https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/ 200
-          ls_ https://pgda.gsfc.nasa.gov/data/ 120
-          ls_ https://luna1.diviner.ucla.edu/~jpierre/diviner/level4_rdr_v1/ 40
-          ls_ https://luna1.diviner.ucla.edu/~jpierre/diviner/ 60
-          ls_ https://pds-geosciences.wustl.edu/lro/ 60
-          ls_ https://pds-geosciences.wustl.edu/lro/lro-l-lend-4-cdr-v1/ 40
-          ls_ https://pds-geosciences.wustl.edu/lro/lro-l-dlre-5-rdr-v1/ 40
-          ls_ https://pds-geosciences.wustl.edu/lro/lro-l-dlre-4-rdr-v1/ 40
-          ls_ https://pds-geosciences.wustl.edu/lro/lro-l-lend-5-rdr-v1/ 40
-      - name: PGDA product pages (search for relevant)
-        run: |
-          set +e
-          curl -sSL -m 60 -A "Mozilla/5.0 NYXOS" https://pgda.gsfc.nasa.gov/products/ | python3 -c "
+          for n in 56 57 62 63 64 66 69 71 73 80 82 83 84 85 87 88 89 91 92 93 94 95 96 97 98 99 100 101 102 104 105 106; do
+            echo "#### products/$n"; curl -sSL -m 40 -A "Mozilla/5.0 NYXOS" https://pgda.gsfc.nasa.gov/products/$n | python3 -c "
           import sys,re,html
           t=sys.stdin.read()
-          for m in re.finditer(r'href=\"(/products/\d+)\"[^>]*>([^<]*)<',t): print(m.group(1),html.unescape(m.group(2)).strip())" | head -150
-      - name: HEAD checks
+          t=re.sub(r'(?s)<(script|style).*?</\1>','',t)
+          fl=re.findall(r'href=\"([^\"]+\.(?:TIF|tif|IMG|img|zip|csv|CSV|tab|TAB|LBL|lbl|xyz|json))\"',t)
+          t=re.sub(r'<[^>]+>',' ',t); t=html.unescape(re.sub(r'\s+',' ',t))
+          i=t.find('Moon') 
+          print(t[300:800]); print('FILES',fl[:8])"
+          done
+      - name: Diviner and PDS
         run: |
           set +e
-          for u in \
-            https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_83S_10MPP_ADJ.TIF \
-            https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_80S_20MPP_ADJ.TIF \
-            https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_75S_30MPP_ADJ.TIF \
-            https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/LDEM_60S_60MPP_ADJ.TIF \
-            https://pgda.gsfc.nasa.gov/data/MoonIllumination/AVGVISIB_85S_060M_201608.TIF \
-            https://pgda.gsfc.nasa.gov/data/MoonIllumination/AVGVISIB_75S_120M_201608.TIF \
-            https://pgda.gsfc.nasa.gov/data/MoonIllumination/AVGVISIB_65S_240M_201608.TIF ; do
-            echo "$u"; curl -sSIL -m 30 -A "Mozilla/5.0 NYXOS" "$u" | grep -aiE "^HTTP|content-length"; done
+          for u in https://luna1.diviner.ucla.edu/~jpierre/diviner/ https://luna1.diviner.ucla.edu/~jpierre/diviner/level4_rdr_v1/ https://pds-geosciences.wustl.edu/lro/lro-l-dlre-4-rdr-v1/lrodlr_1001/ https://pds-geosciences.wustl.edu/lro/lro-l-lend-4-cdr-v1/ ; do
+            echo "#### $u"; curl -ksSL -m 60 -A "Mozilla/5.0 NYXOS" "$u" | grep -aoE 'href="[^"?][^"]*"' | grep -v -E 'nasa.gov|wustl.edu|css|mailto|pds.nasa|firstgov|jpl.nasa' | head -60; done
