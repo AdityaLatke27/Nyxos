@@ -1,0 +1,21 @@
+name: build-ephemeris
+on:
+  push:
+    branches: [data-eph]
+permissions:
+  contents: write
+jobs:
+  eph:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -q spiceypy numpy
+      - run: python3 tools/build_ephemeris.py
+      - name: Publish
+        run: |
+          git config user.name nyxos-data-bot; git config user.email bot@users.noreply.github.com
+          git checkout --orphan eph-data; git rm -rf -q --cached .
+          git add -f public/landing/eph.f32 public/landing/eph.json
+          git commit -q -m "DE440 sun/earth table [skip ci]"
+          git push -f origin eph-data
