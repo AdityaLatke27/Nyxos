@@ -148,7 +148,7 @@ function Report({ c, print }: { c: ReportContext; print: boolean }) {
       <h3>Landing-zone slope</h3>
       <p>NASA's Planetary Geodesy Data Archive publishes LOLA south-polar slope maps at 10 m (83°S–pole), 20 m (80°S), 30 m (75°S) and 60 m (60°S). NYXOS reduces them to hazard cells (100–480 m) storing the 95th-percentile slope, the share of pixels steeper than 10° and the mean slope error. The landing zone is the cell containing the point and every cell within {a.profile.landingZoneRadiusM.value} m. PASS needs 10 m data and 95th-percentile slope plus error within the limit; FAIL needs the majority of pixels in the worst cell steeper than 10°; anything coarser than 10 m is capped at Warning. The product slope is measured over a shorter baseline than the 100 m of the NASA requirement, which makes the test conservative.</p>
       <h3>Sunlight</h3>
-      <p>The Sun's direction comes from an analytic ephemeris (Meeus series; IAU 2009 lunar orientation) and was checked against JPL DE440 and JPL Horizons during development. At each 30-minute step the Sun's 0.2666° disc is tested against the terrain horizon; a step counts as lit when at least half of the disc is visible. Only direct sunlight is modelled: no scattered light, no atmospheric or regolith effects, no spacecraft shadowing.</p>
+      <p>The Sun's direction comes from {a.ephemeris === 'JPL DE440' ? 'JPL\'s DE440 ephemeris through SPICE, sampled hourly in the Moon mean-Earth/polar-axis frame (the frame of the LOLA maps) and interpolated with a four-point cubic. It agrees with JPL Horizons to 0.0007° in elevation and 0.0001° in azimuth over 847 test samples at seven sites (automated test in the repository).' : 'an analytic ephemeris (Meeus series; IAU 2009 lunar orientation), used here because the requested dates fall outside the DE440 table (2026–2035). Against JPL Horizons it differs by up to 0.26° in azimuth and 0.008° in elevation.'} At each 30-minute step the Sun's 0.2666° disc is tested against the terrain horizon; a step counts as lit when at least half of the disc is visible. Only direct sunlight is modelled: no scattered light, no atmospheric or regolith effects, no spacecraft shadowing.</p>
       <h3>Earth visibility</h3>
       <p>The Earth's direction and distance use the same ephemeris. The Earth disc (6371 km radius) is tested against the terrain horizon. This is geometric visibility only; a usable radio link also depends on antenna pointing, power and range.</p>
       <h3>Windows</h3>
@@ -163,7 +163,7 @@ function Report({ c, print }: { c: ReportContext; print: boolean }) {
           <tr><td>Slope and slope error</td><td>NASA PGDA, LOLA slope products (LDSM, 60°S–pole)</td><td>10–60 m native; 100–480 m hazard cells</td><td>Landing and EVA terrain</td></tr>
           <tr><td>Elevation for shadows</td><td>LOLA / SLDEM2015 via the NYXOS terrain pyramid</td><td>≈ {Math.round(a.demResolutionM)} m at this point (20–500 m by region)</td><td>Horizon, sunlight, Earth visibility</td></tr>
           <tr><td>Crater catalogue</td><td>IAU / USGS Gazetteer of Planetary Nomenclature</td><td>diameter ≥ 2 km</td><td>Context</td></tr>
-          <tr><td>Sun / Earth position</td><td>Analytic ephemeris, checked against JPL DE440 and Horizons</td><td>30 min steps</td><td>Sunlight, Earth visibility, windows</td></tr>
+          <tr><td>Sun / Earth position</td><td>{a.ephemeris === 'JPL DE440' ? 'JPL DE440 via SPICE (NAIF kernels moon_pa_de440, moon_de440 frame)' : 'Analytic ephemeris (outside DE440 table)'}</td><td>30 min steps</td><td>Sunlight, Earth visibility, windows</td></tr>
           <tr><td>Lander limits</td><td>{a.profile.id === 'nasa-hls' ? 'NASA Artemis HLS update, NTRS 20240009596' : 'user-defined'}</td><td>n/a</td><td>Pass / fail thresholds</td></tr>
         </tbody>
       </table>
@@ -191,7 +191,8 @@ function Report({ c, print }: { c: ReportContext; print: boolean }) {
         <li>NASA (2022). NASA identifies candidate regions for landing the next Americans on the Moon.</li>
         <li>Meeus, J. Astronomical Algorithms. Willmann-Bell.</li>
         <li>Archinal, B. A., et al. IAU Working Group on Cartographic Coordinates and Rotational Elements reports.</li>
-        <li>JPL Horizons system and DE440 ephemeris, https://ssd.jpl.nasa.gov/horizons/</li>
+        <li>Park, R. S., et al. (2021). The JPL Planetary and Lunar Ephemerides DE440 and DE441. The Astronomical Journal 161, 105.</li>
+        <li>JPL Horizons system, https://ssd.jpl.nasa.gov/horizons/; NAIF SPICE toolkit and lunar kernels, https://naif.jpl.nasa.gov/</li>
       </ul>
       {print && <script dangerouslySetInnerHTML={{ __html: 'window.addEventListener("load",function(){setTimeout(function(){window.print()},400)})' }} />}
     </main>

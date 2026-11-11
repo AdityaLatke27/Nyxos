@@ -7,6 +7,7 @@ import type { SimAssets } from '../../sim/data/types'
 import { searchCraters, craterAt } from '../../analysis/craterLookup'
 import { HazardField, browserLoader, loadManifest, polarXY } from '../hazard'
 import { evaluate, type Assessment } from '../engine'
+import { loadEphemerisTable } from '../../astro/ephemerisTable'
 import { NASA_HLS, customProfile, type LanderProfile } from '../profile'
 import { INSTRUMENTS, nearbyFeatures, nearbyMissions, shadowScan, yearSunDirs, type ShadowScan } from '../nearby'
 import { buildReport, downloadText, reportCsv, type ReportContext } from '../report'
@@ -96,6 +97,7 @@ export default function LandingApp() {
         const p = polarXY(site.lat, site.lon)
         await hazard.ensure(p.x, p.y, 3500)
       }
+      await loadEphemerisTable()
       await new Promise((r) => setTimeout(r, 20))
       if (id !== runId.current) return
       const res = evaluate({ lat: site.lat, lon: site.lon, startMs: start, profile, terrain, hazard })
@@ -298,7 +300,7 @@ export default function LandingApp() {
               <table className="ld-t"><tbody>
                 <tr><td>Slope hazard cells</td><td>NASA PGDA LOLA south-polar slope maps (10–60 m native). Cell value = 95th-percentile slope of the native pixels. Covers 60°S to the pole only.</td></tr>
                 <tr><td>Terrain for shadows</td><td>NYXOS elevation pyramid, 20–500 m cells from LOLA / SLDEM2015; local resolution ≈ {Math.round(a.demResolutionM)} m here.</td></tr>
-                <tr><td>Sun and Earth position</td><td>Analytic ephemeris, checked against JPL DE440 and Horizons. Direct sunlight only, disc half-lit counts as lit.</td></tr>
+                <tr><td>Sun and Earth position</td><td>{a.ephemeris === 'JPL DE440' ? 'JPL DE440 (SPICE, Moon mean-Earth frame), hourly table with cubic interpolation; matches JPL Horizons within 0.001°.' : 'Analytic model (the requested dates are outside the DE440 table, 2026–2035); good to about 0.26° in azimuth.'} Direct sunlight only, disc half-lit counts as lit.</td></tr>
                 <tr><td>Not assessed</td><td>{a.gaps.join(' ')}</td></tr>
               </tbody></table>
               <p className="ld-hint">Ends {fmtUtc(missionEnd)} · stay length {fmtDur(a.stayDays * 24)}.</p>

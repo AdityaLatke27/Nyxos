@@ -197,7 +197,58 @@ export interface MoonState {
   icrfToScene: [Vec3, Vec3, Vec3]
 }
 
+/**
+ * Optional JPL DE440 table (hourly Sun/Earth directions in the Moon mean-Earth frame, built
+ * from SPICE by tools/build_ephemeris.py). When installed and the date is inside its span,
+ * moonState uses it for the Sun and Earth directions; otherwise the analytic model above.
+ */
+export interface EphemerisTable {
+  startMs: number
+  stepMs: number
+  count: number
+  data: Float32Array // 7 floats per sample: sun xyz, earth xyz (scene frame), earth distance km
+}
+let table: EphemerisTable | null = null
+export function installEphemerisTable(t: EphemerisTable | null) {
+  table = t
+}
+export function ephemerisSource(date: Date): 'JPL DE440' | 'analytic' {
+  if (!table) return 'analytic'
+  const k = (date.getTime() - table.startMs) / table.stepMs
+  return k >= 1 && k <= table.count - 3 ? 'JPL DE440' : 'analytic'
+}
+
+/** Four-point Lagrange interpolation of the table at time ms; null outside the span. */
+function fromTable(ms: number): { sun: Vec3; earth: Vec3; dist: number } | null {
+  if (!table) return null
+  const x = (ms - table.startMs) / table.stepMs
+  const i1 = Math.floor(x)
+  if (i1 < 1 || i1 > table.count - 3) return null
+  const f = x - i1
+  const w = [(-f * (f - 1) * (f - 2)) / 6, ((f + 1) * (f - 1) * (f - 2)) / 2, (-(f + 1) * f * (f - 2)) / 2, ((f + 1) * f * (f - 1)) / 6]
+  const v = new Array<number>(7).fill(0)
+  for (let k = 0; k < 4; k++) {
+    const o = (i1 - 1 + k) * 7
+    for (let c = 0; c < 7; c++) v[c] += w[k] * table.data[o + c]
+  }
+  return { sun: norm([v[0], v[1], v[2]]), earth: norm([v[3], v[4], v[5]]), dist: v[6] }
+}
+
 export function moonState(date: Date): MoonState {
+  const m = moonStateAnalytic(date)
+  const t = fromTable(date.getTime())
+  if (!t) return m
+  return {
+    ...m,
+    sunDir: t.sun,
+    earthDir: t.earth,
+    earthDistKm: t.dist,
+    subsolarLatDeg: Math.asin(t.sun[1]) / DEG,
+    subsolarLonDeg: Math.atan2(t.sun[0], t.sun[2]) / DEG,
+  }
+}
+
+export function moonStateAnalytic(date: Date): MoonState {
   const sun = sunGeocentric(date)
   const moon = moonGeocentric(date)
   const ax = moonBodyAxes(date)

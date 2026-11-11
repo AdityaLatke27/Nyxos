@@ -1,6 +1,6 @@
 import { SUN_RADIUS_DEG, discAbove } from '../sim/analysis/siteAnalysis'
 import { horizonAt } from '../sim/terrain/cpuTerrain'
-import { moonState } from '../astro/ephemeris'
+import { ephemerisSource, moonState } from '../astro/ephemeris'
 import { siteFrame } from '../sim/terrain/cpuTerrain'
 import { greatCircleKm } from '../analysis/geo'
 import { HazardField, polarXY, type HazardCell } from './hazard'
@@ -265,6 +265,8 @@ export interface Assessment {
   stats: WindowStats
   windows: { litOnly: Run[]; litAndEarth: Run[] }
   horizon: Float32Array
+  /** where the Sun/Earth directions came from over the whole analysed span */
+  ephemeris: 'JPL DE440' | 'analytic model'
   demResolutionM: number
   gaps: string[]
 }
@@ -527,7 +529,9 @@ export function evaluate(inp: EvalInput): Assessment {
 
   return {
     site: { lat, lon, heightM: hKm * 1000 }, profile, startMs, stayDays, rows, safety, operations, headline,
-    hazardCell: cell, zoneWorst, eva, grid, timeline: tl, stats, windows, horizon, demResolutionM: demM, gaps,
+    hazardCell: cell, zoneWorst, eva, grid, timeline: tl, stats, windows, horizon,
+    ephemeris: ephemerisSource(new Date(startMs)) === 'JPL DE440' && ephemerisSource(new Date(startMs + scan * DAY)) === 'JPL DE440' ? 'JPL DE440' : 'analytic model',
+    demResolutionM: demM, gaps,
   }
 }
 

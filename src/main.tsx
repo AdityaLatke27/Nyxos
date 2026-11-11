@@ -1,3 +1,4 @@
+import { loadEphemerisTable } from './astro/ephemerisTable'
 import { lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
@@ -6,6 +7,7 @@ import App from './App.tsx'
 const SimApp = lazy(() => import('./sim/SimApp'))
 const LandingApp = lazy(() => import('./landing/ui/LandingApp'))
 
+void loadEphemerisTable()
 const isSimulator = window.location.pathname.startsWith('/app')
 const isLanding = /^\/app\/landing\/?$/.test(window.location.pathname)
 
