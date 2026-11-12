@@ -11,20 +11,9 @@ jobs:
     steps:
       - run: |
           set +e
+          sudo apt-get install -y -qq gdal-bin >/dev/null 2>&1
           mkdir w && cd w
-          for f in Landing_Sites Illumination_Modeling PSR_Volatile_Estimates; do curl -sSL -m 300 -o $f.zip https://zenodo.org/api/records/17084058/files/$f.zip/content; mkdir $f; (cd $f && unzip -o ../$f.zip >/dev/null); done
-          ls -laR . | head -60
-          python3 - <<'PY'
-          import json,glob
-          for f in glob.glob('*/*.lyrx'):
-              d=json.load(open(f)); print('=====',f)
-              def walk(o,p='',depth=0):
-                  if depth>4: return
-                  if isinstance(o,dict):
-                      for k,v in o.items():
-                          if isinstance(v,(dict,list)): 
-                              print(p+k, type(v).__name__, len(v)); walk(v,p+k+'.',depth+1)
-                          else: print(p+k,'=',str(v)[:150])
-                  elif isinstance(o,list) and o: walk(o[0],p+'[0].',depth+1)
-              walk(d)
-          PY
+          for f in Landing_Sites Illumination_Modeling; do curl -sSL -m 300 -o $f.zip https://zenodo.org/api/records/17084058/files/$f.zip/content; mkdir $f; (cd $f && unzip -o ../$f.zip >/dev/null && unzip -o $f.zip -d data >/dev/null); done
+          find . -type f ! -name "*.lyrx" ! -name "*.zip" | head -80
+          for f in $(find . -name "*.shp" | head -6); do echo "######## $f"; ogrinfo -so -al $f 2>&1 | head -45; done
+          for f in $(find . \( -name "*.tif" -o -name "*.img" \) | head -4); do echo "######## $f"; gdalinfo -stats $f 2>&1 | grep -E "Size is|Origin|Pixel Size|Minimum|Type=|NoData|PROJCRS|METHOD|PARAMETER" | head -20; done
