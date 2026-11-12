@@ -5,14 +5,15 @@ def rows(p):
     out = []
     for l in open(p):
         if l.startswith('#') or not l.strip(): continue
-        a = [float(x) for x in l.split(',')]
+        a = [float(x) if '*' not in x else None for x in l.split(',')]
         out.append(a)
     return out
 low = [r for r in rows('w/hydrogenlow.txt') if r[1] <= -80.0]
 hd = rows('w/hydrogenhd.txt')
 hd = [r for r in hd if r[1] <= -80.0]
 # half-degree grid is regular: 720 lon x N lat, row-major from -90, lon from -180
-ppm = [round(r[4], 2) for r in hd]
+ppm = [None if r[4] is None else round(r[4], 2) for r in hd]
+print('missing hd', sum(1 for v in ppm if v is None), 'missing low', sum(1 for r in low if r[4] is None))
 assert len(hd) % 720 == 0
 json.dump({
   'source': 'NASA Lunar Prospector neutron spectrometer, hydrogen maps (Feldman et al. 2001, JGR), PDS Geosciences Node special reduced products',
