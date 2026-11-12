@@ -238,3 +238,31 @@ describe('exact sunrise and sunset times', () => {
     expect(w.longestDarkH).toBeGreaterThanOrEqual(0)
   })
 })
+
+import { compareCsv, rowDiffers, rowList, verdictSummary, type CompareResult } from './compare'
+describe('site comparison helpers', () => {
+  const mk = (name: string, st: 'PASS' | 'FAIL'): CompareResult => ({
+    entry: { id: name, name, lat: -89, lon: 0 },
+    a: {
+      rows: [{ id: 'slope', label: 'Landing slope', status: st, value: '5°', limit: '', limitSource: '', tag: 'NASA' as never, basis: '', why: '', gating: true }],
+      safety: { status: st, reasons: [] }, operations: { status: 'PASS', reasons: [] }, science: { status: 'INFO' as never, reasons: [] },
+      sensitivity: { level: 'ROBUST' } as never, windows: { litAndEarth: [], litOnly: [] },
+    } as never,
+  })
+  const rs = [mk('A', 'PASS'), mk('B', 'FAIL')]
+  it('detects rows whose status differs and lists them once', () => {
+    expect(rowList(rs).map((r) => r.id)).toEqual(['slope'])
+    expect(rowDiffers(rs, 'slope')).toBe(true)
+    expect(rowDiffers([mk('A', 'PASS'), mk('B', 'PASS')], 'slope')).toBe(false)
+  })
+  it('summarises each verdict separately and never produces a combined score', () => {
+    const s = verdictSummary(rs)
+    expect(s).toHaveLength(3)
+    expect(s[0]).toBe('Safety — pass: A; fail: B')
+    expect(s.join(' ')).not.toMatch(/score|rank/i)
+  })
+  it('exports csv with one column per site', () => {
+    const c = compareCsv(rs, { profile: 'p', startIso: 't', stayDays: 6.5 })
+    expect(c.split('\n').find((l) => l.startsWith('"Safety verdict"'))).toBe('"Safety verdict","PASS","FAIL"')
+  })
+})

@@ -32,6 +32,7 @@ const ITEMS: Item[] = [
     id: 'compare',
     label: 'Site Comparison',
     short: 'Compare',
+    href: '/app/compare',
     icon: (
       <svg viewBox="0 0 24 24" {...ICON}>
         <path d="M7.5 20s-4.5-4.4-4.5-8a4.5 4.5 0 0 1 9 0c0 3.6-4.5 8-4.5 8z" />

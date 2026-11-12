@@ -72,3 +72,31 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .l3-overlay{position:absolute;inset:0;pointer-events:none;z-index:2}
 .l3-tip{position:absolute;z-index:4;padding:.38rem .6rem;border-radius:8px;background:var(--glass-bg-strong);border:1px solid var(--glass-border);font-size:.72rem;white-space:nowrap;pointer-events:none;font-variant-numeric:tabular-nums}
 .l3-help{position:absolute;left:10px;bottom:8px;margin:0;z-index:3;font-size:11.5px;color:rgba(228,236,248,.75);text-shadow:0 1px 3px #000;pointer-events:none}
+
+/* ---- site comparison ---- */
+.cmp-pick{display:grid;grid-template-columns:minmax(300px,1fr) minmax(300px,1fr);gap:26px;padding:18px;border-radius:18px;background:var(--glass-bg-strong);border:1px solid var(--glass-border);box-shadow:var(--glass-shadow)}
+.cmp-pick h3{margin:0 0 8px;font-size:15px}
+.cmp-chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px;padding:0;list-style:none}
+.cmp-chips li{display:flex;align-items:center;gap:6px;padding:5px 6px 5px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.18);font-size:13.5px}
+.cmp-chips button{border:0;background:transparent;color:#93a3bd;font-size:16px;line-height:1;cursor:pointer;padding:0 6px}
+.cmp-chips button:hover{color:#ff7a8a}
+.cmp-add{display:flex;flex-direction:column;gap:10px}
+.cmp-add label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:#93a3bd}
+.cmp-add select,.cmp-add input{font:15px 'Space Grotesk',sans-serif;color:#e4ecf8;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);border-radius:9px;padding:8px 10px;min-width:0;color-scheme:dark}
+.cmp-add .ld-two button,.cmp-add>button{font:500 14px 'Space Grotesk',sans-serif;border-radius:10px;padding:9px 14px;border:1px solid rgba(111,195,255,.55);background:rgba(111,195,255,.16);color:#e4ecf8;cursor:pointer}
+.cmp-add button:disabled{opacity:.4;cursor:default}
+.cmp-scroll{overflow-x:auto;border-radius:14px;border:1px solid var(--glass-border);background:var(--glass-bg)}
+.cmp-table{border-collapse:collapse;width:100%;min-width:560px;font-size:13.5px}
+.cmp-table th,.cmp-table td{padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid rgba(255,255,255,.07)}
+.cmp-table thead th{position:sticky;top:0;background:#0b1220;font-size:14px}
+.cmp-table thead th small{display:block;font-weight:400;color:#93a3bd;font-size:12px;margin-top:2px}
+.cmp-table tbody th{font-weight:500;color:#cdd9ea;min-width:170px}
+.cmp-table tbody th i{display:block;font-style:normal;font-size:11.5px;color:#93a3bd}
+.cmp-table tr.sect th{background:rgba(255,255,255,.04);font-size:12.5px;color:#93a3bd;font-weight:600}
+.cmp-table tr.diff th{box-shadow:inset 3px 0 0 #ffb86b}
+.cmp-cell .val{display:block;margin-top:4px;color:#cdd9ea;line-height:1.4}
+.cmp-note{margin:10px 0 0;color:#93a3bd;font-size:12.5px;max-width:90ch;line-height:1.5}
+.cmp-prog{margin:16px 0;color:#93a3bd}
+.cmp-summary{margin:14px 0 18px;padding:14px 18px;border-radius:12px;background:rgba(255,255,255,.045);border-left:5px solid #6fc3ff;line-height:1.55;max-width:90ch}
+.cmp-summary p{margin:0}.cmp-summary p+p{margin-top:6px}
+@media (max-width:760px){.cmp-pick{grid-template-columns:1fr}}
