@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { Feature } from '../sim/data/types'
 import type { Assessment } from './engine'
+import { validationSentence } from './validation'
 import { INSTRUMENTS, type NearFeature, type ShadowScan } from './nearby'
 import { HazardMap, HorizonChart, LIGHT, ShadowMap, SlopeHistogram, TimelineChart, WindowCalendar } from './ui/Charts'
 import { STATUS_GLYPH, STATUS_LABEL, fmtLat, fmtLon, fmtUtc, windowLines } from './ui/format'
@@ -154,6 +155,8 @@ function Report({ c, print }: { c: ReportContext; print: boolean }) {
       <p>The permanently shadowed region (PSR) map is NASA's LOLA illumination-based PSR product at 20 m. The site is checked for the nearest cell at least half PSR, within {(a.profile.coldTrapReachM.value / 1000).toFixed(0)} km. A second, independent check looks for a Diviner bin whose maximum temperature is at or below {a.profile.iceStableTempK.value} K, the cold-trap threshold of the Diviner polar products. PASS means such ground lies within the {(a.profile.evaRadiusM.value / 1000).toFixed(0)} km EVA radius, WARNING means only within the longer traverse reach, FAIL means none within reach. These distances are NYXOS assumptions and are editable. The result is evidence of thermally stable ground, not detection of ice.</p>
       <h3>Sunlight</h3>
       <p>The Sun's direction comes from {a.ephemeris === 'JPL DE440' ? 'JPL\'s DE440 ephemeris through SPICE, sampled hourly in the Moon mean-Earth/polar-axis frame (the frame of the LOLA maps) and interpolated with a four-point cubic. It agrees with JPL Horizons to 0.0007° in elevation and 0.0001° in azimuth over 847 test samples at seven sites (automated test in the repository).' : 'an analytic ephemeris (Meeus series; IAU 2009 lunar orientation), used here because the requested dates fall outside the DE440 table (2026–2035). Against JPL Horizons it differs by up to 0.26° in azimuth and 0.008° in elevation.'} At each 30-minute step the Sun's 0.2666° disc is tested against the terrain horizon; a step counts as lit when at least half of the disc is visible. Only direct sunlight is modelled: no scattered light, no atmospheric or regolith effects, no spacecraft shadowing.</p>
+      <h3>Validation against NASA illumination maps</h3>
+      <p>{validationSentence()} Test files and scripts are in the repository (tools/validation).</p>
       <h3>Earth visibility</h3>
       <p>The Earth's direction and distance use the same ephemeris. The Earth disc (6371 km radius) is tested against the terrain horizon. This is geometric visibility only; a usable radio link also depends on antenna pointing, power and range.</p>
       <h3>Windows</h3>

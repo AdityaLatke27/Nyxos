@@ -6,6 +6,7 @@ import { CpuTerrain } from '../../sim/terrain/cpuTerrain'
 import type { SimAssets } from '../../sim/data/types'
 import { searchCraters, craterAt } from '../../analysis/craterLookup'
 import { HazardField, browserLoader, loadManifest, polarXY } from '../hazard'
+import { validationSentence } from '../validation'
 import { loadTerrainField, type TerrainField } from '../terrain'
 import { evaluate, type Assessment } from '../engine'
 import { loadEphemerisTable } from '../../astro/ephemerisTable'
@@ -312,6 +313,7 @@ export default function LandingApp() {
                 <tr><td>Temperature and ice stability</td><td>LRO Diviner maximum and mean temperature, ice-table depth and cold-trap fraction, 240 m bins, 80°S to the pole (Williams et al. 2019; Schorghofer and Williams 2020).</td></tr>
                 <tr><td>Terrain for shadows</td><td>NYXOS elevation pyramid, 20–500 m cells from LOLA / SLDEM2015; local resolution ≈ {Math.round(a.demResolutionM)} m here.</td></tr>
                 <tr><td>Sun and Earth position</td><td>{a.ephemeris === 'JPL DE440' ? 'JPL DE440 (SPICE, Moon mean-Earth frame), hourly table with cubic interpolation; matches JPL Horizons within 0.001°.' : 'Analytic model (the requested dates are outside the DE440 table, 2026–2035); good to about 0.26° in azimuth.'} Direct sunlight only, disc half-lit counts as lit.</td></tr>
+                <tr><td>Illumination check</td><td>{validationSentence()}</td></tr>
                 <tr><td>Not assessed</td><td>{a.gaps.join(' ')}</td></tr>
               </tbody></table>
               <p className="ld-hint">Ends {fmtUtc(missionEnd)} · stay length {fmtDur(a.stayDays * 24)}.</p>
