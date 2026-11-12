@@ -12,7 +12,19 @@ jobs:
       - run: |
           set +e
           mkdir w && cd w
-          for f in Landing_Sites Illumination_Modeling PSR_Volatile_Estimates; do curl -sSL -m 300 -o $f.zip https://zenodo.org/api/records/17084058/files/$f.zip/content; mkdir $f; (cd $f && unzip -q -o ../$f.zip); done
-          find . -type f ! -name "*.zip" | head -150
-          echo "#### SMALL TEXT FILES"
-          for f in $(find . -type f \( -name "*.csv" -o -name "*.txt" -o -name "*.md" -o -name "*.json" \) | head -12); do echo "=== $f ($(wc -c <$f) bytes)"; head -c 1500 $f; echo; done
+          for f in Landing_Sites Illumination_Modeling PSR_Volatile_Estimates; do curl -sSL -m 300 -o $f.zip https://zenodo.org/api/records/17084058/files/$f.zip/content; mkdir $f; (cd $f && unzip -o ../$f.zip >/dev/null); done
+          ls -laR . | head -60
+          python3 - <<'PY'
+          import json,glob
+          for f in glob.glob('*/*.lyrx'):
+              d=json.load(open(f)); print('=====',f)
+              def walk(o,p='',depth=0):
+                  if depth>4: return
+                  if isinstance(o,dict):
+                      for k,v in o.items():
+                          if isinstance(v,(dict,list)): 
+                              print(p+k, type(v).__name__, len(v)); walk(v,p+k+'.',depth+1)
+                          else: print(p+k,'=',str(v)[:150])
+                  elif isinstance(o,list) and o: walk(o[0],p+'[0].',depth+1)
+              walk(d)
+          PY
