@@ -7,19 +7,19 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
     steps:
       - run: |
           set +e
-          sudo apt-get install -y -qq gdal-bin aria2 python3-gdal >/dev/null 2>&1
-          mkdir -p w && cd w
-          D=http://luna1.diviner.ucla.edu/~jpierre/diviner/level4_polar
-          for f in 24x6_240m/additional_maps/polar_south_80_Tmax.grd 24x6_240m/additional_maps/polar_south_80_Tmean.grd 24x6_240m/additional_maps/polar_south_80_zit.grd 24x6_240m/additional_maps/aareadme.txt additional_maps/fraction_below_110_south_summer.grd additional_maps/fraction_below_110_south_summer.txt additional_maps/fraction_below_110_south_winter.grd; do curl -sS --ciphers 'DEFAULT@SECLEVEL=0' -k -m 120 -O $D/$f; done
-          ls -la
-          echo "#### aareadme additional"; cat aareadme.txt | head -60
-          echo "#### fraction txt"; cat fraction_below_110_south_summer.txt | head -30
-          for f in polar_south_80_Tmax.grd polar_south_80_Tmean.grd polar_south_80_zit.grd fraction_below_110_south_summer.grd; do echo "#### $f"; gdalinfo -stats $f 2>&1 | grep -vE "^\s+(PROJCRS|BASEGEOGCRS|DATUM|ELLIPSOID|LENGTHUNIT|ID\[|PRIMEM|ANGLEUNIT|CONVERSION|METHOD|PARAMETER|SCALEUNIT|CS\[|AXIS|MERIDIAN|ORDER)" | head -40; done
-          B=https://pgda.gsfc.nasa.gov/data/LOLA_20mpp
-          for f in LDRM_80S_50MPP_ADJ_ROUGH_100M LDRM_80S_50MPP_ADJ_SLP_100M LPSR_80S_20MPP_ADJ; do aria2c -q -x16 -s16 -k4M --user-agent="Mozilla/5.0 NYXOS" -d . -o $f.TIF $B/$f.TIF; echo "#### $f"; gdalinfo -stats $f.TIF 2>&1 | grep -E "Size is|Origin|Pixel Size|Type=|NoData|Minimum|STATISTICS|Corner|Upper|Lower|Band|Offset|Scale|Unit" | head -30; done
-          echo "#### xml"; curl -sS -m 60 $B/LDRM_80S_50MPP_ADJ_ROUGH_100M.XML | head -c 1500
-          echo "#### LPSR xml"; curl -sS -m 60 $B/LPSR_80S_20MPP_ADJ.XML | head -c 1500
+          curl -sSL -m 60 -A "Mozilla/5.0 NYXOS" https://pgda.gsfc.nasa.gov/products/69 | python3 -c "
+          import sys,re,html
+          t=sys.stdin.read()
+          t=re.sub(r'(?s)<(script|style).*?</\1>','',t)
+          t=re.sub(r'<[^>]+>',' ',t); t=html.unescape(re.sub(r'\s+',' ',t))
+          print(t[:5500])"
+          for u in https://astropedia.astrogeology.usgs.gov/download/Moon/Research/Craters/lunar_crater_database_robbins_2018/ https://pdsimage2.wr.usgs.gov/archive/ https://zenodo.org/api/records?q=robbins%20lunar%20crater%20database; do echo "#### $u"; curl -sSL -m 45 -A "Mozilla/5.0 NYXOS" "$u" | head -c 1200; echo; done
+          for u in https://pds-geosciences.wustl.edu/lro/lro-l-lend-2-edr-v1/ https://pds-geosciences.wustl.edu/lro/lro-l-lend-4-rdr-v1/ https://ode.rsl.wustl.edu/moon/pagehelp/Content/Missions_Instruments/LRO/LEND/Derived_Data.htm; do echo "#### $u"; curl -sSL -m 30 -A "Mozilla/5.0 NYXOS" "$u" | python3 -c "
+          import sys,re,html
+          t=sys.stdin.read(); fl=re.findall(r'href=\"([^\"]+)\"',t)
+          t=re.sub(r'(?s)<(script|style).*?</\1>','',t); t=re.sub(r'<[^>]+>',' ',t); t=html.unescape(re.sub(r'\s+',' ',t))
+          print(t[:1500]); print([f for f in fl if 'css' not in f][:25])"; done
