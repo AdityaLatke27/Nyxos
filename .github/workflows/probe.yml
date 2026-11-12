@@ -11,11 +11,8 @@ jobs:
     steps:
       - run: |
           set +e
-          sudo apt-get install -y -qq gdal-bin >/dev/null 2>&1
           mkdir w && cd w
-          for f in boulder_density_map.tif boulder_density_4p5_10m.tif boulder_density_10_30m.tif boulder_density_30_1000m.tif boulder_mean_diameter_map.tif nra_map.tif global_boulder_latitude_distr.csv; do curl -sSL -m 300 -o $f "https://zenodo.org/api/records/15520275/files/$f/content"; done
-          echo "=== ZENODO META"; curl -sSL -m 60 https://zenodo.org/api/records/15520275 | python3 -c "import json,sys;d=json.load(sys.stdin)['metadata'];print(d.get('description'));print(d.get('license'));print(d.get('related_identifiers'))"
-          for f in boulder_density_map.tif boulder_mean_diameter_map.tif nra_map.tif; do echo "=== $f"; gdalinfo -stats $f | grep -vE "^\s+(METHOD|AXIS|ORDER|ID\[|LENGTHUNIT|ANGLEUNIT|SPHEROID)" | head -45; done
-          echo "=== LAT CSV"; head -5 global_boulder_latitude_distr.csv; tail -3 global_boulder_latitude_distr.csv
-          echo "=== LP REDUCED"; curl -sSL -m 60 https://pds-geosciences.wustl.edu/missions/lunarp/reduced.html | sed 's/<[^>]*>/ /g' | tr -s ' \n' | head -80
-          echo "=== LEND DERIVED"; curl -sSL -m 60 https://ode.rsl.wustl.edu/moon/pagehelp/Content/Missions_Instruments/LRO/LEND/Derived_Data.htm | sed 's/<[^>]*>/ /g' | tr -s ' \n' | head -40
+          echo "=== PYGEOAPI MOON"; curl -sSL -m 90 -w "\nHTTP %{http_code} %{size_download}\n" "https://astrogeology.usgs.gov/pygeoapi/collections?f=json" | python3 -c "import sys,json;t=sys.stdin.read();i=t.rfind('\nHTTP');print(t[i:]);d=json.loads(t[:i]);print([c['id'] for c in d['collections']])" 2>&1 | head -8
+          curl -sSL -m 120 -w "\nHTTP %{http_code} %{size_download}\n" "https://astrogeology.usgs.gov/pygeoapi/collections/moon/robbinsv1/items?f=json&limit=3" | cut -c1-900 | head -12
+          echo "=== ASTROPEDIA"; for u in "https://astropedia.astrogeology.usgs.gov/download/Moon/Research/Craters/lunar_crater_database_robbins_2018.csv" "https://astropedia.astrogeology.usgs.gov/download/Moon/Research/Craters/lunar_crater_database_robbins_2018" "https://pdsimage2.wr.usgs.gov/Individual_Investigations/moon_lro.kaguya_multi_craterdatabase_robbins_2018/data/"; do curl -sSL -m 200 -o t.bin -w "$u -> HTTP %{http_code} %{size_download}\n" "$u"; head -c 300 t.bin | head -3; echo; done
+          echo "=== ZENODO 13990480"; curl -sSL -m 60 https://zenodo.org/api/records/13990480 | python3 -c "import json,sys;d=json.load(sys.stdin);m=d['metadata'];print(m['title']);print(m.get('description','')[:700]);print([(f['key'],f['size']) for f in d['files']])"
