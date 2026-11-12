@@ -7,6 +7,7 @@ import type { SimAssets } from '../../sim/data/types'
 import { searchCraters, craterAt } from '../../analysis/craterLookup'
 import { HazardField, browserLoader, loadManifest, polarXY } from '../hazard'
 import { validationSentence } from '../validation'
+import { ROBUSTNESS_LABEL } from '../sensitivity'
 import { loadTerrainField, type TerrainField } from '../terrain'
 import { evaluate, type Assessment } from '../engine'
 import { loadEphemerisTable } from '../../astro/ephemerisTable'
@@ -15,7 +16,7 @@ import { INSTRUMENTS, nearbyFeatures, nearbyMissions, shadowScan, yearSunDirs, t
 import { buildReport, downloadText, reportCsv, type ReportContext } from '../report'
 import PolarPicker from './PolarPicker'
 import Landing3D, { webglAvailable } from './Landing3D'
-import { DARK, HazardMap, HorizonChart, ShadowMap, SlopeHistogram, TimelineChart, WindowCalendar } from './Charts'
+import { DARK, HazardMap, HorizonChart, SensitivityChart, ShadowMap, SlopeHistogram, TimelineChart, WindowCalendar } from './Charts'
 import { STATUS_GLYPH, STATUS_LABEL, fmtDur, fmtLat, fmtLon, fmtUtc, windowLines } from './format'
 import './landing.css'
 
@@ -278,6 +279,8 @@ export default function LandingApp() {
                 <figure><figcaption>Sun and Earth during the stay</figcaption><TimelineChart a={a} t={DARK} /><p>Lines show disc-centre elevation. The strips below show when at least half of each disc clears the terrain horizon.</p></figure>
                 <figure><figcaption>Terrain horizon and sky tracks</figcaption><HorizonChart a={a} t={DARK} /><p>A dot above the grey horizon means that body is visible at that moment.</p></figure>
                 <figure><figcaption>Slope hazard map (2 km)</figcaption><HazardMap a={a} t={DARK} /><p>Gold circle: {a.profile.landingZoneRadiusM.value} m landing zone. Dashed: 2 km EVA radius. Hatched: 95th-percentile slope above {a.profile.maxLandingSlopeDeg.value}°.</p></figure>
+                <figure><figcaption>How sure is this?</figcaption><SensitivityChart a={a} t={DARK} />
+                  <p><span className={`ld-chip st-${a.sensitivity.level === 'ROBUST' ? 'INFO' : a.sensitivity.level === 'SENSITIVE' ? 'WARNING' : 'FAIL'}`}>{ROBUSTNESS_LABEL[a.sensitivity.level]}</span> {a.sensitivity.drivers.join(' ')}</p></figure>
                 <figure><figcaption>Slope distribution</figcaption><SlopeHistogram a={a} t={DARK} /><p>Share of 2 km hazard cells per slope class. Hatched bars exceed the EVA limit.</p></figure>
                 <figure className="wide"><figcaption>When can a {a.stayDays}-day stay start?</figcaption><WindowCalendar a={a} t={DARK} /><p>
                   {a.windows.litAndEarth.length ? `First sunlit + Earth-visible start: ${windowLines(a, 'litAndEarth', 1)[0]}` : a.windows.litOnly.length ? `First fully sunlit start: ${windowLines(a, 'litOnly', 1)[0]}. No start keeps Earth in view throughout.` : 'No start time in the next year keeps the surface sunlit for the whole stay.'}</p></figure>

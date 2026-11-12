@@ -286,6 +286,37 @@ export function ShadowMap({ s, t, size = 300 }: { s: ShadowScan; t: Theme; size?
   )
 }
 
+/* ------------------------------------------- sensitivity to the terrain horizon */
+export function SensitivityChart({ a, t, w = 720, h = 300 }: { a: Assessment; t: Theme; w?: number; h?: number }) {
+  const sn = a.sensitivity
+  const { offsetDeg: xs, litPct, earthPct } = sn.curve
+  const m = { l: 46, r: 64, t: 16, b: 52 }
+  const pw = w - m.l - m.r, ph = h - m.t - m.b
+  const X = (d: number) => m.l + ((d + sn.searchLimitDeg) / (2 * sn.searchLimitDeg)) * pw
+  const Y = (v: number) => m.t + (1 - v / 100) * ph
+  const path = (ys: number[]) => ys.map((v, i) => `${i ? 'L' : 'M'}${X(xs[i]).toFixed(1)},${Y(v).toFixed(1)}`).join(' ')
+  const flips = [
+    ...(sn.flip.sun.raise !== null ? [{ d: sn.flip.sun.raise, c: t.sun, k: 'Sun' }] : []),
+    ...(sn.flip.sun.lower !== null ? [{ d: -sn.flip.sun.lower, c: t.sun, k: 'Sun' }] : []),
+    ...(sn.flip.earth.raise !== null ? [{ d: sn.flip.earth.raise, c: t.earth, k: 'Earth' }] : []),
+    ...(sn.flip.earth.lower !== null ? [{ d: -sn.flip.earth.lower, c: t.earth, k: 'Earth' }] : []),
+  ]
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width="100%" role="img" aria-label="Share of the stay lit and in view of Earth as the terrain horizon is raised or lowered">
+      {[0, 25, 50, 75, 100].map((v) => (<g key={v}><line x1={m.l} x2={w - m.r} y1={Y(v)} y2={Y(v)} stroke={t.grid} /><T x={m.l - 6} y={Y(v) + 4} a="end" t={t}>{v}%</T></g>))}
+      {[-1, -0.5, 0, 0.5, 1].map((d) => (<g key={d}><line x1={X(d)} x2={X(d)} y1={m.t + ph} y2={m.t + ph + 4} stroke={t.axis} /><T x={X(d)} y={m.t + ph + 16} a="middle" t={t}>{d > 0 ? `+${d}` : d}°</T></g>))}
+      <line x1={X(0)} x2={X(0)} y1={m.t} y2={m.t + ph} stroke={t.axis} strokeDasharray="4 3" />
+      <T x={X(0) + 5} y={m.t + 11} t={t} s={10}>as modelled</T>
+      <path d={path(earthPct)} fill="none" stroke={t.earth} strokeWidth={2} strokeDasharray="7 4" />
+      <path d={path(litPct)} fill="none" stroke={t.sun} strokeWidth={2.5} />
+      {flips.map((f, i) => (<g key={i}><circle cx={X(f.d)} cy={m.t + ph + 28} r={4} fill={f.c} stroke={t.bg} strokeWidth={1.5} /></g>))}
+      <T x={w - m.r + 6} y={Y(litPct[litPct.length - 1]) + 4} t={t} fill={t.sun} w={600}>Sun lit</T>
+      <T x={w - m.r + 6} y={Y(earthPct[earthPct.length - 1]) + (Math.abs(Y(litPct[litPct.length - 1]) - Y(earthPct[earthPct.length - 1])) < 14 ? 18 : 4)} t={t} fill={t.earth} w={600}>Earth seen</T>
+      <T x={m.l + pw / 2} y={h - 4} a="middle" t={t}>Whole terrain horizon moved up (+) or down (−) by this many degrees; dots mark where a verdict changes</T>
+    </svg>
+  )
+}
+
 function NoData({ t, w, h, msg }: { t: Theme; w: number; h: number; msg: string }) {
   return (
     <svg viewBox={`0 0 ${w} ${h}`} width="100%"><rect x={1} y={1} width={w - 2} height={h - 2} rx={6} fill="none" stroke={t.grid} strokeDasharray="4 4" /><T x={w / 2} y={h / 2 + 4} a="middle" t={t}>{msg}</T></svg>

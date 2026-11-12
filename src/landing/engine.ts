@@ -2,6 +2,7 @@ import { SUN_RADIUS_DEG, discAbove } from '../sim/analysis/siteAnalysis'
 import { horizonAt } from '../sim/terrain/cpuTerrain'
 import { ephemerisSource, moonState } from '../astro/ephemeris'
 import type { TerrainCell, TerrainField, PsrSearch } from './terrain'
+import { computeSensitivity, type Sensitivity } from './sensitivity'
 import { siteFrame } from '../sim/terrain/cpuTerrain'
 import { greatCircleKm } from '../analysis/geo'
 import { HazardField, polarXY, type HazardCell } from './hazard'
@@ -258,6 +259,7 @@ export interface Assessment {
   safety: Verdict
   operations: Verdict
   science: Verdict
+  sensitivity: Sensitivity
   lunar: LunarSite | null
   headline: { level: 'FEASIBLE' | 'CONDITIONAL' | 'NOT_RECOMMENDED' | 'CANNOT_ASSESS'; text: string }
   hazardCell: HazardCell | null
@@ -694,8 +696,32 @@ export function evaluate(inp: EvalInput): Assessment {
     headline = { level: 'CONDITIONAL', text: 'Conditionally feasible: no hard failure, but at least one constraint is only partly met or limited by data resolution.' }
   }
 
+  // ---- how sure is this: what-if horizon shifts, lit definitions, slope error
+  const stayTl = (off: number) => {
+    const hs = new Float32Array(horizon.length)
+    for (let i = 0; i < hs.length; i++) hs[i] = horizon[i] + off
+    return buildTimeline(hs, lat, lon, hKm, startMs, stayDays)
+  }
+  const sensitivity = computeSensitivity({
+    statsAt: (off) => {
+      const t2 = off === 0 ? tl : stayTl(off)
+      const st = windowStats(t2, 0, Math.min(t2.n, L + 1))
+      return { litPct: st.litPct, earthPct: st.earthPct }
+    },
+    litShareAt: (thr) => {
+      const n = Math.min(tl.n, L + 1)
+      let c = 0
+      for (let i = 0; i < n; i++) if (tl.sunFrac[i] >= thr) c++
+      return (100 * c) / n
+    },
+    lim: profile,
+    coarse,
+    slope: site ? { worstDeg: site.zoneWorst.slope100, errDeg: cell?.errDeg ?? 0, limitDeg: slopeLim } : null,
+    ephemeris: ephemerisSource(new Date(startMs)) === 'JPL DE440' && ephemerisSource(new Date(startMs + scan * DAY)) === 'JPL DE440' ? 'JPL DE440' : 'analytic model',
+  })
+
   return {
-    site: { lat, lon, heightM: hKm * 1000 }, profile, startMs, stayDays, rows, safety, operations, science, lunar: site, headline,
+    site: { lat, lon, heightM: hKm * 1000 }, profile, startMs, stayDays, rows, safety, operations, science, sensitivity, lunar: site, headline,
     hazardCell: cell, zoneWorst, eva, grid, timeline: tl, stats, windows, horizon,
     ephemeris: ephemerisSource(new Date(startMs)) === 'JPL DE440' && ephemerisSource(new Date(startMs + scan * DAY)) === 'JPL DE440' ? 'JPL DE440' : 'analytic model',
     demResolutionM: demM, gaps,

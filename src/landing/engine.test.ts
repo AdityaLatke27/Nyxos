@@ -167,3 +167,49 @@ describe('100 m plane-fit slope, roughness, science', () => {
     expect(row(far, 'coldtrap').status).toBe('WARNING')
   })
 })
+
+import { sunStatus, earthStatus } from './sensitivity'
+
+describe('uncertainty and sensitivity', () => {
+  const [lat, lon] = [-89.5, 40]
+  const a = evaluate({ lat, lon, startMs: Date.UTC(2026, 10, 15), profile: NASA_HLS, terrain: flat, hazard: null, scanDays: 30 })
+  it('helper statuses reproduce the verdict rows', () => {
+    const sun = a.rows.find((r) => r.id === 'sun')!, earth = a.rows.find((r) => r.id === 'earth')!
+    expect(sunStatus(a.stats.litPct, NASA_HLS, false)).toBe(sun.status)
+    expect(earthStatus(a.stats.earthPct, NASA_HLS, false)).toBe(earth.status)
+  })
+  it('lit share never rises when the horizon is raised, and the curve spans ±1°', () => {
+    const c = a.sensitivity.curve
+    expect(c.offsetDeg[0]).toBe(-1)
+    expect(c.offsetDeg[c.offsetDeg.length - 1]).toBe(1)
+    for (let i = 1; i < c.litPct.length; i++) expect(c.litPct[i]).toBeLessThanOrEqual(c.litPct[i - 1] + 1e-9)
+    for (let i = 1; i < c.earthPct.length; i++) expect(c.earthPct[i]).toBeLessThanOrEqual(c.earthPct[i - 1] + 1e-9)
+  })
+  it('a flip margin is exactly where the status first differs along the curve', () => {
+    const c = a.sensitivity.curve
+    const base = sunStatus(a.stats.litPct, NASA_HLS, false)
+    const f = a.sensitivity.flip.sun
+    c.offsetDeg.forEach((d, i) => {
+      const st = sunStatus(c.litPct[i], NASA_HLS, false)
+      const m = d > 0 ? f.raise : d < 0 ? f.lower : null
+      if (m === null) { if (d !== 0) expect(st).toBe(base); return }
+      if (Math.abs(d) >= m - 1e-9) expect(st).not.toBe(base)
+      else if (Math.abs(d) <= m - 0.1) expect(st).toBe(base)
+    })
+  })
+  it('lit definitions are ordered any ≥ half ≥ whole', () => {
+    const d = a.sensitivity.litDefinitions
+    expect(d.anyPartPct).toBeGreaterThanOrEqual(d.halfDiscPct)
+    expect(d.halfDiscPct).toBeGreaterThanOrEqual(d.wholeDiscPct)
+  })
+  it('slope margin flags a verdict inside the map error as sensitive', async () => {
+    const lf = lunarField(10.5, 0.4, 300)
+    const p = polarXY(lat, lon)
+    await lf.ensure(p.x, p.y, 12000)
+    const b = evaluate({ lat, lon, startMs: Date.UTC(2026, 10, 15), profile: NASA_HLS, terrain: flat, hazard: null, lunar: lf, scanDays: 8 })
+    expect(b.sensitivity.slope).not.toBeNull()
+    // no map error in this synthetic field, so 0.5° over the limit is not inside an error bar
+    expect(b.sensitivity.slope!.sensitive).toBe(false)
+    expect(b.sensitivity.slope!.marginDeg).toBeCloseTo(-0.5, 1)
+  })
+})

@@ -2,8 +2,9 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import type { Feature } from '../sim/data/types'
 import type { Assessment } from './engine'
 import { validationSentence } from './validation'
+import { ROBUSTNESS_LABEL } from './sensitivity'
 import { INSTRUMENTS, type NearFeature, type ShadowScan } from './nearby'
-import { HazardMap, HorizonChart, LIGHT, ShadowMap, SlopeHistogram, TimelineChart, WindowCalendar } from './ui/Charts'
+import { HazardMap, HorizonChart, LIGHT, SensitivityChart, ShadowMap, SlopeHistogram, TimelineChart, WindowCalendar } from './ui/Charts'
 import { STATUS_GLYPH, STATUS_LABEL, fmtLat, fmtLon, fmtUtc, windowLines } from './ui/format'
 
 export interface ReportContext {
@@ -38,6 +39,15 @@ export function reportCsv(c: ReportContext) {
   lines.push('# Frame: planetocentric latitude, east-positive longitude, mean-Earth/polar-axis; heights above 1737.4 km sphere')
   lines.push('section,id,label,status,value,limit,limit_source,data_tag,data_basis,why')
   for (const r of a.rows) lines.push(['constraint', r.id, r.label, r.status, r.value, r.limit, r.limitSource, r.tag, r.basis, r.why].map(csvCell).join(','))
+  lines.push('')
+  lines.push('sensitivity,quantity,value')
+  lines.push(`sensitivity,robustness,${a.sensitivity.level}`)
+  lines.push(`sensitivity,sun_flip_raise_deg,${a.sensitivity.flip.sun.raise ?? ''}`)
+  lines.push(`sensitivity,sun_flip_lower_deg,${a.sensitivity.flip.sun.lower ?? ''}`)
+  lines.push(`sensitivity,earth_flip_raise_deg,${a.sensitivity.flip.earth.raise ?? ''}`)
+  lines.push(`sensitivity,earth_flip_lower_deg,${a.sensitivity.flip.earth.lower ?? ''}`)
+  lines.push('horizon_shift_deg,sun_lit_pct,earth_visible_pct')
+  a.sensitivity.curve.offsetDeg.forEach((d, i) => lines.push(`${d},${a.sensitivity.curve.litPct[i].toFixed(2)},${a.sensitivity.curve.earthPct[i].toFixed(2)}`))
   lines.push('')
   lines.push('timeline_utc,sun_elevation_deg,sun_azimuth_deg,sun_disc_visible_fraction,earth_elevation_deg,earth_azimuth_deg,earth_disc_visible_fraction')
   const tl = a.timeline
@@ -128,6 +138,9 @@ function Report({ c, print }: { c: ReportContext; print: boolean }) {
       <figure><figcaption>Figure 5. Start dates for a {a.stayDays}-day stay</figcaption><WindowCalendar a={a} t={t} />
         <p><span className="how">How to read:</span> a filled bar marks every start time (30-minute resolution, next 12 months) from which the entire stay stays inside the stated condition. {a.windows.litAndEarth.length ? `Sun + Earth windows (first ${Math.min(6, a.windows.litAndEarth.length)}): ` + windowLines(a, 'litAndEarth').join('; ') + '.' : a.windows.litOnly.length ? `Fully sunlit starts exist, for example ${windowLines(a, 'litOnly', 3).join('; ')}, but none that also keep Earth in view.` : 'No start in the next year keeps the whole stay sunlit.'}</p></figure>
 
+      <figure><figcaption>Figure 6. How the answer changes if the terrain horizon is wrong</figcaption><SensitivityChart a={a} t={t} />
+        <p><span className="how">How to read:</span> each line is the share of the {a.stayDays}-day stay that is sunlit (solid) or in view of Earth (dashed) when the whole terrain horizon is moved up (right) or down (left) by the amount on the axis. The dots mark the smallest shift that changes a verdict. A shift of 0.1° is about {a.sensitivity.heightAt(0.1, 1000).toFixed(1)} m of terrain height at 1 km, or {a.sensitivity.heightAt(0.1, 300).toFixed(1)} m at 300 m. The shift is applied to every direction at once, which is the harshest case.</p></figure>
+
       <h2>4. What is nearby</h2>
       <div className="grid2">
         <div>
@@ -146,7 +159,22 @@ function Report({ c, print }: { c: ReportContext; print: boolean }) {
       <table><tbody>{INSTRUMENTS.map((i) => <tr key={i.id}><td>{i.name}</td><td>{i.answers}</td><td><span className="chip NOT_EVALUATED">– Not loaded</span></td></tr>)}</tbody></table>
       <p className="small">A cold or shadowed place is a candidate for volatiles, not proof. Independent evidence (neutron, UV, radar) is needed and is not part of this build.</p>
 
-      <h2>5. Methods</h2>
+      <h2>5. Uncertainty and sensitivity</h2>
+      <p><b>{ROBUSTNESS_LABEL[a.sensitivity.level]}.</b> {a.sensitivity.drivers.join(' ')} This describes how stable the answer is, not whether it is good: a verdict that fails robustly still fails. The labels are a NYXOS rule of thumb: fragile if a verdict flips within 0.1° of horizon shift, sensitive within 0.25° or when the slope sits inside its map error.</p>
+      <table>
+        <thead><tr><th>Source</th><th>Size</th><th>How it was obtained</th><th>Effect here</th></tr></thead>
+        <tbody>
+          <tr><td>Sun and Earth direction</td><td>{a.sensitivity.ephemeris.source === 'JPL DE440' ? '≤ 0.001°' : 'up to 0.26° (azimuth)'}</td><td>Measured against JPL Horizons, 847 samples at 7 sites</td><td>Equivalent to about {a.sensitivity.heightAt(a.sensitivity.ephemeris.angularErrDeg, 1000).toFixed(2)} m of terrain height at 1 km; negligible next to the terrain</td></tr>
+          <tr><td>Terrain horizon model</td><td>Sun-visible fraction {a.sensitivity.measured.sunRmsPp.toFixed(1)} percentage points RMS; Earth {a.sensitivity.measured.earthRmsPp.toFixed(1)}</td><td>Measured against NASA illumination maps at {a.sensitivity.measured.n} points poleward of 75°S (tools/validation)</td><td>A typical error across the polar region, not for this site alone; the local terrain here is ≈ {Math.round(a.demResolutionM)} m resolution</td></tr>
+          <tr><td>Horizon shift (what-if)</td><td>0.0 to ±{a.sensitivity.searchLimitDeg}°</td><td>Whole horizon moved, stay re-computed at each 0.02° step</td><td>Sun: {flipText(a.sensitivity.flip.sun)}; Earth: {flipText(a.sensitivity.flip.earth)}</td></tr>
+          <tr><td>Definition of "lit"</td><td>any part {a.sensitivity.litDefinitions.anyPartPct.toFixed(1)}%, half the disc {a.sensitivity.litDefinitions.halfDiscPct.toFixed(1)}%, the whole disc {a.sensitivity.litDefinitions.wholeDiscPct.toFixed(1)}%</td><td>Same stay, three thresholds on the Sun's disc above the horizon</td><td>NYXOS counts half the disc as lit; the spread shows how much that choice matters</td></tr>
+          <tr><td>Slope</td><td>{a.sensitivity.slope ? `${Math.abs(a.sensitivity.slope.marginDeg).toFixed(1)}° ${a.sensitivity.slope.marginDeg >= 0 ? 'under' : 'over'} the limit; map error ${a.sensitivity.slope.errDeg.toFixed(1)}°` : 'no 100 m slope here'}</td><td>Distance from the steepest landing-zone cell to the limit, against the slope error carried with the LOLA product</td><td>{a.sensitivity.slope?.sensitive ? 'Inside the error: the verdict could change' : 'Outside the error'}</td></tr>
+          <tr><td>Observer height</td><td>ground level assumed</td><td>No mast or antenna height is modelled</td><td>A mast lowers the horizon; a drop of 0.17° corresponds to roughly 3 m at 1 km</td></tr>
+          <tr><td>Not quantified</td><td>n/a</td><td>Boulders, vertical errors of the elevation model (not separated), lander thermal limits</td><td>Listed under limitations; no number is invented for them</td></tr>
+        </tbody>
+      </table>
+
+      <h2>6. Methods</h2>
       <h3>Landing-zone slope</h3>
       <p>The verdict uses NASA PGDA's LOLA plane-fit slope over a 100 m baseline (product LDRM SLP_100M, 50 m pixels, 80°S to the pole), the same baseline as the NASA requirement of under 10° over 100 m. Each hazard cell (100 m near the pole, 200 m beyond 216 km) stores the steepest value in it. The landing zone is the cell containing the point and every cell within {a.profile.landingZoneRadiusM.value} m. PASS: the steepest cell is within the limit even with the map's slope error added; WARNING: within the limit but not once the error is added; FAIL: the steepest cell is over the limit. Outside 80°S the older native-pixel map is used instead (10–60 m pixels, 95th-percentile slope per cell, capped at Warning when coarser than 10 m), and it is also shown as a conservative cross-check where both exist. EVA slope is judged on the 1600 m-baseline plane-fit slope (PGDA LDRM SLP_1600M), the nearest published baseline to the 2 km of the requirement: FAIL if the site's own value exceeds the limit, WARNING if part of the 2 km disc does, PASS otherwise; NASA gives no required reachable share. The older flood-fill of native-pixel slopes is kept as an informational reachable-area figure.</p>
       <h3>Roughness, elevation and temperature</h3>
@@ -164,7 +192,7 @@ function Report({ c, print }: { c: ReportContext; print: boolean }) {
       <h3>Persistent shadow</h3>
       <p>On a 9×9 grid over ±4 km the horizon is computed at each point and the Sun is stepped every 6 hours for one year. Points never lit are flagged. One year covers the 346.6-day cycle of the Sun's selenographic latitude but not every librational effect, so this is an approximation of long-term permanent shadow, not a replacement for the published PSR maps.</p>
 
-      <h2>6. Data sources and resolution</h2>
+      <h2>7. Data sources and resolution</h2>
       <table>
         <thead><tr><th>Layer</th><th>Source</th><th>Resolution</th><th>Used for</th></tr></thead>
         <tbody>
@@ -181,7 +209,7 @@ function Report({ c, print }: { c: ReportContext; print: boolean }) {
       </table>
       <p className="small">Frame: planetocentric latitude, east-positive longitude, mean-Earth / polar-axis (IAU 2009); heights above the 1737.4 km reference sphere. Data tags in the constraint table: DEM = derived from elevation data, MODEL = computed by NYXOS, CAT = catalogue value, N/A = no data.</p>
 
-      <h2>7. Limitations</h2>
+      <h2>8. Limitations</h2>
       <ul>
         <li>Boulders, small craters and surface texture are not assessed (no LROC-derived hazard map loaded). A site that passes here is not certified safe.</li>
         <li>The 100 m slope, roughness, elevation, PSR and temperature layers exist only from 80°S to the pole; between 60°S and 80°S only the native-pixel slope map exists, and north of 60°S the verdict is Not evaluated, not guessed.</li>
@@ -192,10 +220,10 @@ function Report({ c, print }: { c: ReportContext; print: boolean }) {
       </ul>
       {a.gaps.length > 0 && <p><b>Gaps in this assessment:</b> {a.gaps.join(' ')}</p>}
 
-      <h2>8. Reproducibility</h2>
+      <h2>9. Reproducibility</h2>
       <p>Open NYXOS, go to Landing analysis, enter latitude {a.site.lat.toFixed(4)}, longitude {a.site.lon.toFixed(4)}, landing time {new Date(a.startMs).toISOString().slice(0, 16)} UTC, stay {a.stayDays} days, lander "{a.profile.name}". The accompanying CSV contains the 30-minute Sun and Earth series and the horizon profile used here. {c.hazardNote}.</p>
 
-      <h2>9. References</h2>
+      <h2>10. References</h2>
       <ul className="small">
         <li>NASA, Artemis HLS update, NTRS 20240009596 (Key Artemis III landing requirements).</li>
         <li>NASA Planetary Geodesy Data Archive, LOLA digital elevation and slope products: https://pgda.gsfc.nasa.gov/products/90</li>
@@ -210,6 +238,9 @@ function Report({ c, print }: { c: ReportContext; print: boolean }) {
     </main>
   )
 }
+
+const flipText = (f: { raise: number | null; lower: number | null }) =>
+  f.raise === null && f.lower === null ? 'no change within the search range' : [f.raise !== null ? `flips if raised ${f.raise.toFixed(2)}°` : '', f.lower !== null ? `flips if lowered ${f.lower.toFixed(2)}°` : ''].filter(Boolean).join(', ')
 
 export function buildReport(c: ReportContext, print = false): string {
   const body = renderToStaticMarkup(<Report c={c} print={print} />)
