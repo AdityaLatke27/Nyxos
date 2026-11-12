@@ -7,14 +7,15 @@ permissions:
 jobs:
   s:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - run: |
           set +e
           sudo apt-get install -y -qq gdal-bin >/dev/null 2>&1
           mkdir w && cd w
-          curl -sSL -m 300 -o Landing_Sites.zip https://zenodo.org/api/records/17084058/files/Landing_Sites.zip/content; mkdir ls; (cd ls && unzip -o ../Landing_Sites.zip >/dev/null && unzip -o Landing_Sites.zip -d data >/dev/null)
-          curl -sSL -m 60 https://zenodo.org/api/records/17084058 -o rec.json
-          echo "=== META"; python3 -c "import json;d=json.load(open('rec.json'))['metadata'];print(d.get('title'));print(d.get('description'));print(d.get('publication_date'))"
-          echo "=== README"; find .. -iname "READ_ME*" -exec cat {} \; ; find ls -iname "READ*" -exec cat {} \;
-          echo "=== CSV"; ogr2ogr -f CSV /vsistdout/ ls/data/LandingSites.shp
+          for f in boulder_density_map.tif boulder_density_4p5_10m.tif boulder_density_10_30m.tif boulder_density_30_1000m.tif boulder_mean_diameter_map.tif nra_map.tif global_boulder_latitude_distr.csv; do curl -sSL -m 300 -o $f "https://zenodo.org/api/records/15520275/files/$f/content"; done
+          echo "=== ZENODO META"; curl -sSL -m 60 https://zenodo.org/api/records/15520275 | python3 -c "import json,sys;d=json.load(sys.stdin)['metadata'];print(d.get('description'));print(d.get('license'));print(d.get('related_identifiers'))"
+          for f in boulder_density_map.tif boulder_mean_diameter_map.tif nra_map.tif; do echo "=== $f"; gdalinfo -stats $f | grep -vE "^\s+(METHOD|AXIS|ORDER|ID\[|LENGTHUNIT|ANGLEUNIT|SPHEROID)" | head -45; done
+          echo "=== LAT CSV"; head -5 global_boulder_latitude_distr.csv; tail -3 global_boulder_latitude_distr.csv
+          echo "=== LP REDUCED"; curl -sSL -m 60 https://pds-geosciences.wustl.edu/missions/lunarp/reduced.html | sed 's/<[^>]*>/ /g' | tr -s ' \n' | head -80
+          echo "=== LEND DERIVED"; curl -sSL -m 60 https://ode.rsl.wustl.edu/moon/pagehelp/Content/Missions_Instruments/LRO/LEND/Derived_Data.htm | sed 's/<[^>]*>/ /g' | tr -s ' \n' | head -40
