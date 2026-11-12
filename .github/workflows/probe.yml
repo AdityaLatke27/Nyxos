@@ -7,12 +7,17 @@ permissions:
 jobs:
   s:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - run: |
           set +e
           mkdir w && cd w
-          echo "=== PYGEOAPI MOON"; curl -sSL -m 90 -w "\nHTTP %{http_code} %{size_download}\n" "https://astrogeology.usgs.gov/pygeoapi/collections?f=json" | python3 -c "import sys,json;t=sys.stdin.read();i=t.rfind('\nHTTP');print(t[i:]);d=json.loads(t[:i]);print([c['id'] for c in d['collections']])" 2>&1 | head -8
-          curl -sSL -m 120 -w "\nHTTP %{http_code} %{size_download}\n" "https://astrogeology.usgs.gov/pygeoapi/collections/moon/robbinsv1/items?f=json&limit=3" | cut -c1-900 | head -12
-          echo "=== ASTROPEDIA"; for u in "https://astropedia.astrogeology.usgs.gov/download/Moon/Research/Craters/lunar_crater_database_robbins_2018.csv" "https://astropedia.astrogeology.usgs.gov/download/Moon/Research/Craters/lunar_crater_database_robbins_2018" "https://pdsimage2.wr.usgs.gov/Individual_Investigations/moon_lro.kaguya_multi_craterdatabase_robbins_2018/data/"; do curl -sSL -m 200 -o t.bin -w "$u -> HTTP %{http_code} %{size_download}\n" "$u"; head -c 300 t.bin | head -3; echo; done
-          echo "=== ZENODO 13990480"; curl -sSL -m 60 https://zenodo.org/api/records/13990480 | python3 -c "import json,sys;d=json.load(sys.stdin);m=d['metadata'];print(m['title']);print(m.get('description','')[:700]);print([(f['key'],f['size']) for f in d['files']])"
+          curl -sSL -m 60 https://zenodo.org/api/records/13990480 | python3 -c "import json,sys;d=json.load(sys.stdin);m=d['metadata'];import re;print(re.sub('<[^>]+>',' ',m.get('description','')));print(m.get('license'),m.get('publication_date'),m.get('version'));print(m.get('related_identifiers'));print(d.get('doi'))" > desc.txt; echo "=== DESC"; cat desc.txt | cut -c1-3000
+          curl -sSL -m 900 -o c.csv "https://zenodo.org/api/records/13990480/files/Moon_Diamond_catalog_4.csv/content"; ls -l c.csv
+          echo "=== HEAD"; head -4 c.csv | cut -c1-600; wc -l c.csv
+          python3 - <<'PY'
+          import csv,sys
+          r=csv.reader(open('c.csv'));h=next(r);print(h)
+          idx={k:i for i,k in enumerate(h)}
+          print(idx)
+          PY
