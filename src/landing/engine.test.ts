@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { HazardField, polarToLatLon, polarXY, type Manifest } from './hazard'
-import { evaluate, evaReach, feasibleStarts, runs, type Timeline } from './engine'
+import { buildTimeline, crossingTime, evaluate, evaReach, feasibleStarts, runs, windowStats, type Timeline } from './engine'
 import { NASA_HLS, customProfile } from './profile'
 
 const flat = {
@@ -211,5 +211,30 @@ describe('uncertainty and sensitivity', () => {
     // no map error in this synthetic field, so 0.5° over the limit is not inside an error bar
     expect(b.sensitivity.slope!.sensitive).toBe(false)
     expect(b.sensitivity.slope!.marginDeg).toBeCloseTo(-0.5, 1)
+  })
+})
+
+describe('exact sunrise and sunset times', () => {
+  // a 3 degree ridge in every direction: the Sun is lit when it is more than ~3 degrees up
+  const ridge = new Float32Array(720).fill(3)
+  const tl = buildTimeline(ridge, -85.5, 20, 0, Date.UTC(2027, 0, 1), 40)
+  it('refined crossings lie inside their sample step and sit on the 0.5 threshold', () => {
+    let checked = 0
+    for (let i = 1; i < tl.n && checked < 6; i++) {
+      if ((tl.sunFrac[i] >= 0.5) === (tl.sunFrac[i - 1] >= 0.5)) continue
+      const t = crossingTime(tl, 'sun', i)
+      const t0 = tl.startMs + (i - 1) * tl.stepMs
+      expect(t).toBeGreaterThanOrEqual(t0)
+      expect(t).toBeLessThanOrEqual(t0 + tl.stepMs)
+      expect(Math.abs(tl.fracAt!(t).sun - 0.5)).toBeLessThan(0.02)
+      checked++
+    }
+    expect(checked).toBeGreaterThan(0)
+  })
+  it('window statistics report refined sunrise/sunset times and a refined longest dark run', () => {
+    const w = windowStats(tl, 0, tl.n)
+    expect(w.sunrises.length + w.sunsets.length).toBeGreaterThan(0)
+    for (const t of [...w.sunrises, ...w.sunsets]) expect(t).toBeGreaterThan(tl.startMs)
+    expect(w.longestDarkH).toBeGreaterThanOrEqual(0)
   })
 })

@@ -54,6 +54,8 @@ export interface Timeline {
   earthElev: Float32Array
   sunAz: Float32Array
   earthAz: Float32Array
+  /** exact evaluation at any instant (same model as the samples); used to refine threshold crossings */
+  fracAt?: (ms: number) => { sun: number; earth: number }
 }
 
 /** Sun and Earth visibility (fraction of each disc above the terrain horizon) every 30 min. */
@@ -69,8 +71,8 @@ export function buildTimeline(profile: Float32Array, lat: number, lon: number, h
   const earthAz = new Float32Array(n)
   const DEGR = 180 / Math.PI
   const r = 1737.4 + hKm
-  for (let i = 0; i < n; i++) {
-    const s = moonState(new Date(startMs + i * stepMs))
+  const at = (ms: number) => {
+    const s = moonState(new Date(ms))
     const ex = s.earthDir[0] * s.earthDistKm - f.up[0] * r
     const ey = s.earthDir[1] * s.earthDistKm - f.up[1] * r
     const ez = s.earthDir[2] * s.earthDistKm - f.up[2] * r
@@ -83,14 +85,43 @@ export function buildTimeline(profile: Float32Array, lat: number, lon: number, h
     }
     const [se, sa] = dir(s.sunDir)
     const [ee, ea] = dir([ex / el, ey / el, ez / el])
-    sunElev[i] = se
-    earthElev[i] = ee
-    sunAz[i] = sa
-    earthAz[i] = ea
-    sunFrac[i] = discAbove(se, horizonAt(profile, sa), SUN_RADIUS_DEG)
-    earthFrac[i] = discAbove(ee, horizonAt(profile, ea), (Math.asin(6371 / el) * DEGR))
+    return {
+      se, sa, ee, ea,
+      sun: discAbove(se, horizonAt(profile, sa), SUN_RADIUS_DEG),
+      earth: discAbove(ee, horizonAt(profile, ea), (Math.asin(6371 / el) * DEGR)),
+    }
   }
-  return { startMs, stepMs, n, sunFrac, earthFrac, sunElev, earthElev, sunAz, earthAz }
+  for (let i = 0; i < n; i++) {
+    const v = at(startMs + i * stepMs)
+    sunElev[i] = v.se
+    earthElev[i] = v.ee
+    sunAz[i] = v.sa
+    earthAz[i] = v.ea
+    sunFrac[i] = v.sun
+    earthFrac[i] = v.earth
+  }
+  const fracAt = (ms: number) => { const v = at(ms); return { sun: v.sun, earth: v.earth } }
+  return { startMs, stepMs, n, sunFrac, earthFrac, sunElev, earthElev, sunAz, earthAz, fracAt }
+}
+
+/**
+ * Time (ms) at which the Sun or Earth disc fraction crosses 0.5 between samples i-1 and i, found by bisection on the
+ * exact model (to about one second). Falls back to linear interpolation when the timeline has no exact evaluator.
+ */
+export function crossingTime(tl: Timeline, which: 'sun' | 'earth', i: number): number {
+  const arr = which === 'sun' ? tl.sunFrac : tl.earthFrac
+  const t0 = tl.startMs + (i - 1) * tl.stepMs
+  const a = arr[i - 1], c = arr[i]
+  if (!tl.fracAt) return t0 + ((0.5 - a) / (c - a || 1)) * tl.stepMs
+  let lo = t0, hi = t0 + tl.stepMs
+  const loLit = a >= 0.5
+  for (let k = 0; k < 20; k++) {
+    const mid = (lo + hi) / 2
+    const v = tl.fracAt(mid)[which]
+    if ((v >= 0.5) === loLit) lo = mid
+    else hi = mid
+  }
+  return (lo + hi) / 2
 }
 
 export interface Run {
@@ -137,16 +168,21 @@ export function windowStats(tl: Timeline, i0: number, i1: number): WindowStats {
     if (ear(i)) e++
     if (lit(i) && ear(i)) b++
     if (i > i0 && lit(i) !== lit(i - 1)) {
-      const a = tl.sunFrac[i - 1], c = tl.sunFrac[i]
-      const t = tl.startMs + (i - 1 + (0.5 - a) / (c - a || 1)) * tl.stepMs
-      ;(lit(i) ? sunrises : sunsets).push(t)
+      ;(lit(i) ? sunrises : sunsets).push(crossingTime(tl, 'sun', i))
     }
   }
   const n = i1 - i0
-  const longest = (pred: (i: number) => boolean) => {
+  /** Longest run of pred in hours; runs that end inside the window use the exact crossing times, clipped runs use sample counts. */
+  const longest = (pred: (i: number) => boolean, which: 'sun' | 'earth') => {
     let best = 0
-    for (const r of runs(n, (k) => pred(i0 + k))) best = Math.max(best, r.end - r.start)
-    return (best * tl.stepMs) / 3.6e6
+    for (const r of runs(n, (k) => pred(i0 + k))) {
+      const interior = r.start > 0 && r.end < n
+      const ms = interior
+        ? crossingTime(tl, which, i0 + r.end) - crossingTime(tl, which, i0 + r.start)
+        : (r.end - r.start) * tl.stepMs
+      best = Math.max(best, ms)
+    }
+    return best / 3.6e6
   }
   const darkRuns = runs(n, (k) => !lit(i0 + k))
   return {
@@ -154,8 +190,8 @@ export function windowStats(tl: Timeline, i0: number, i1: number): WindowStats {
     litPct: (100 * l) / n,
     earthPct: (100 * e) / n,
     bothPct: (100 * b) / n,
-    longestDarkH: longest((i) => !lit(i)),
-    longestEarthOutH: longest((i) => !ear(i)),
+    longestDarkH: longest((i) => !lit(i), 'sun'),
+    longestEarthOutH: longest((i) => !ear(i), 'earth'),
     sunrises,
     sunsets,
     darkClipped: darkRuns.some((r) => r.start === 0 || r.end === n),

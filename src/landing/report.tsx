@@ -203,7 +203,7 @@ function Report({ c, print }: { c: ReportContext; print: boolean }) {
           <tr><td>Slope and slope error (cross-check, EVA)</td><td>NASA PGDA, LOLA slope products (LDSM, 60°S–pole)</td><td>10–60 m native; 100–480 m hazard cells</td><td>EVA terrain; landing slope outside 80°S</td></tr>
           <tr><td>Elevation for shadows</td><td>LOLA / SLDEM2015 via the NYXOS terrain pyramid</td><td>≈ {Math.round(a.demResolutionM)} m at this point (20–500 m by region)</td><td>Horizon, sunlight, Earth visibility</td></tr>
           <tr><td>Crater catalogue</td><td>IAU / USGS Gazetteer of Planetary Nomenclature</td><td>diameter ≥ 2 km</td><td>Context</td></tr>
-          <tr><td>Sun / Earth position</td><td>{a.ephemeris === 'JPL DE440' ? 'JPL DE440 via SPICE (NAIF kernels moon_pa_de440, moon_de440 frame)' : 'Analytic ephemeris (outside DE440 table)'}</td><td>30 min steps</td><td>Sunlight, Earth visibility, windows</td></tr>
+          <tr><td>Sun / Earth position</td><td>{a.ephemeris === 'JPL DE440' ? 'JPL DE440 via SPICE (NAIF kernels moon_pa_de440, moon_de440 frame)' : 'Analytic ephemeris (outside DE440 table)'}</td><td>30 min steps; sunrise, sunset and the longest dark / Earth-outage runs refined by bisection to about 1 s</td><td>Sunlight, Earth visibility, windows</td></tr>
           <tr><td>Lander limits</td><td>{a.profile.id === 'nasa-hls' ? 'NASA Artemis HLS update, NTRS 20240009596' : 'user-defined'}</td><td>n/a</td><td>Pass / fail thresholds</td></tr>
         </tbody>
       </table>
