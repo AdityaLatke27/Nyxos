@@ -7,14 +7,12 @@ permissions:
 jobs:
   s:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - run: |
           set +e
-          curl -sSL -m 60 https://zenodo.org/api/records/17084058 | python3 -c "
-          import sys,json
-          d=json.load(sys.stdin); m=d.get('metadata',{})
-          print('TITLE',m.get('title')); print('DATE',m.get('publication_date')); print('CREATORS',[c['name'] for c in m.get('creators',[])][:8])
-          import re; print('DESC',re.sub('<[^>]+>',' ',m.get('description',''))[:2500])
-          for f in d.get('files',[]): print('FILE',f['key'],f['size'],f['links'].get('self'))
-          print('REL',m.get('related_identifiers'))"
+          mkdir w && cd w
+          for f in Landing_Sites Illumination_Modeling PSR_Volatile_Estimates; do curl -sSL -m 300 -o $f.zip https://zenodo.org/api/records/17084058/files/$f.zip/content; mkdir $f; (cd $f && unzip -q -o ../$f.zip); done
+          find . -type f ! -name "*.zip" | head -150
+          echo "#### SMALL TEXT FILES"
+          for f in $(find . -type f \( -name "*.csv" -o -name "*.txt" -o -name "*.md" -o -name "*.json" \) | head -12); do echo "=== $f ($(wc -c <$f) bytes)"; head -c 1500 $f; echo; done
