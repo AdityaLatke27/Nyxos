@@ -14,6 +14,9 @@ jobs:
           sudo apt-get install -y -qq gdal-bin >/dev/null 2>&1
           mkdir w && cd w
           for f in Landing_Sites Illumination_Modeling; do curl -sSL -m 300 -o $f.zip https://zenodo.org/api/records/17084058/files/$f.zip/content; mkdir $f; (cd $f && unzip -o ../$f.zip >/dev/null && unzip -o $f.zip -d data >/dev/null); done
-          find . -type f ! -name "*.lyrx" ! -name "*.zip" | head -80
-          for f in $(find . -name "*.shp" | head -6); do echo "######## $f"; ogrinfo -so -al $f 2>&1 | head -45; done
-          for f in $(find . \( -name "*.tif" -o -name "*.img" \) | head -4); do echo "######## $f"; gdalinfo -stats $f 2>&1 | grep -E "Size is|Origin|Pixel Size|Minimum|Type=|NoData|PROJCRS|METHOD|PARAMETER" | head -20; done
+          echo "=== DIRS"; find Illumination_Modeling/data -maxdepth 2 -type d
+          echo "=== LANDINGSITES FIELDS"; ogrinfo -so -al Landing_Sites/data/LandingSites.shp | sed -n '/Geometry Column\|^[A-Za-z_0-9]*: /p' | head -30
+          echo "=== FIRST 12 SITES"; ogrinfo -al -geom=SUMMARY Landing_Sites/data/LandingSites.shp 2>&1 | sed -n '1,120p' | cut -c1-200
+          f=$(find Illumination_Modeling/data -name "Haworth_MaxConsecDaysOfSun+Earth_Midsummer2026GT.tiff" | head -1)
+          echo "=== $f"; gdalinfo -stats "$f" | grep -E "Size is|Origin|Pixel Size|Minimum|Type=|NoData|Latitude of|DESCRIPTION|scale|offset" 
+          for d in $(find Illumination_Modeling/data -maxdepth 1 -mindepth 1 -type d); do echo "--- $d"; ls "$d" | head -5; done
