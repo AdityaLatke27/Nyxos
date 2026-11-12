@@ -15,7 +15,6 @@ jobs:
           mkdir w && cd w
           curl -sSL -m 300 -o Landing_Sites.zip https://zenodo.org/api/records/17084058/files/Landing_Sites.zip/content; mkdir ls; (cd ls && unzip -o ../Landing_Sites.zip >/dev/null && unzip -o Landing_Sites.zip -d data >/dev/null)
           curl -sSL -m 60 https://zenodo.org/api/records/17084058 -o rec.json
-          echo "=== META"; python3 -c "
-import json;d=json.load(open('rec.json'))['metadata'];print(d.get('title'));print(d.get('description'));print(d.get('publication_date'));print(d.get('related_identifiers'))"
-          echo "=== README"; find ls -iname "READ*" -exec cat {} \;
+          echo "=== META"; python3 -c "import json;d=json.load(open('rec.json'))['metadata'];print(d.get('title'));print(d.get('description'));print(d.get('publication_date'))"
+          echo "=== README"; find .. -iname "READ_ME*" -exec cat {} \; ; find ls -iname "READ*" -exec cat {} \;
           echo "=== CSV"; ogr2ogr -f CSV /vsistdout/ ls/data/LandingSites.shp
