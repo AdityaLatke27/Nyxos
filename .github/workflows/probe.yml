@@ -1,25 +1,18 @@
-name: probe-nasa-data
+name: avgvis-sample
 on:
   push:
     branches: [probe2]
 permissions:
-  contents: read
+  contents: write
 jobs:
-  probe:
+  s:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
+      - uses: actions/checkout@v4
       - run: |
-          set +e
-          curl -sSL -m 60 -A "Mozilla/5.0 NYXOS" https://pgda.gsfc.nasa.gov/products/69 | python3 -c "
-          import sys,re,html
-          t=sys.stdin.read()
-          t=re.sub(r'(?s)<(script|style).*?</\1>','',t)
-          t=re.sub(r'<[^>]+>',' ',t); t=html.unescape(re.sub(r'\s+',' ',t))
-          print(t[:5500])"
-          for u in https://astropedia.astrogeology.usgs.gov/download/Moon/Research/Craters/lunar_crater_database_robbins_2018/ https://pdsimage2.wr.usgs.gov/archive/ https://zenodo.org/api/records?q=robbins%20lunar%20crater%20database; do echo "#### $u"; curl -sSL -m 45 -A "Mozilla/5.0 NYXOS" "$u" | head -c 1200; echo; done
-          for u in https://pds-geosciences.wustl.edu/lro/lro-l-lend-2-edr-v1/ https://pds-geosciences.wustl.edu/lro/lro-l-lend-4-rdr-v1/ https://ode.rsl.wustl.edu/moon/pagehelp/Content/Missions_Instruments/LRO/LEND/Derived_Data.htm; do echo "#### $u"; curl -sSL -m 30 -A "Mozilla/5.0 NYXOS" "$u" | python3 -c "
-          import sys,re,html
-          t=sys.stdin.read(); fl=re.findall(r'href=\"([^\"]+)\"',t)
-          t=re.sub(r'(?s)<(script|style).*?</\1>','',t); t=re.sub(r'<[^>]+>',' ',t); t=html.unescape(re.sub(r'\s+',' ',t))
-          print(t[:1500]); print([f for f in fl if 'css' not in f][:25])"; done
+          sudo apt-get install -y -qq aria2 >/dev/null; pip install -q rasterio numpy
+          curl -sSL -m 60 -A "Mozilla/5.0 NYXOS" https://pgda.gsfc.nasa.gov/products/69 | grep -aoE 'href="[^"]+\.(TIF|IMG|LBL|JP2)"' | sed 's/.*data\///' | head -80
+          python3 tools/sample_avgvis.py
+          git config user.name nyxos-data-bot; git config user.email bot@users.noreply.github.com
+          mkdir -p /tmp/o && cp out/avgvis_ref.csv /tmp/o/ && git checkout --orphan avgvis-ref && git rm -rf -q --cached . && rm -rf $(ls -A | grep -v '^\.git$') 2>/dev/null; cp /tmp/o/avgvis_ref.csv . && git add -f avgvis_ref.csv && git commit -q -m "AVGVISIB samples [skip ci]" && git push -f origin avgvis-ref
