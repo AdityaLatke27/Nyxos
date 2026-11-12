@@ -104,13 +104,14 @@ describe('EVA reach', () => {
 
 import { ScienceGrid, TerrainField, type TerrainMeta } from './terrain'
 
-function lunarField(slope: number, rough: number, tmaxK: number, withPsrAt?: { i: number; j: number }) {
+function lunarField(slope: number, rough: number, tmaxK: number, withPsrAt?: { i: number; j: number }, evaSlope = 8) {
   const T = 256, half = 12800, cell = 100
   const meta: TerrainMeta = { tileCells: T, source: 't', tiers: [{ id: 'a', cellM: cell, halfExtentM: half, cells: 256, tilesPerSide: 1, tiles: [[0, 0]] }] }
-  const t = new Uint8ClampedArray(T * T * 4), e = new Uint8ClampedArray(T * T * 4)
+  const t = new Uint8ClampedArray(T * T * 4), e = new Uint8ClampedArray(T * T * 4), v = new Uint8ClampedArray(T * T * 4)
   const hq = Math.round((1500 + 10000) / 0.5)
   for (let i = 0; i < T * T; i++) {
     t[4 * i] = Math.round(slope * 2); t[4 * i + 1] = Math.round(rough / 0.02); t[4 * i + 2] = 0; t[4 * i + 3] = 255
+    v[4 * i] = Math.round(evaSlope * 2); v[4 * i + 1] = Math.round(evaSlope * 2); v[4 * i + 2] = Math.round(evaSlope * 2); v[4 * i + 3] = 255
     e[4 * i] = hq >> 8; e[4 * i + 1] = hq & 255; e[4 * i + 2] = 7; e[4 * i + 3] = 255
   }
   if (withPsrAt) { // a PSR block offset (in cells) from the test site
@@ -123,7 +124,7 @@ function lunarField(slope: number, rough: number, tmaxK: number, withPsrAt?: { i
       f110s: { lo: 0, hi: 1, step: 1 / 254, nodata: 255 }, f110w: { lo: 0, hi: 1, step: 1 / 254, nodata: 255 }, psr: { lo: 0, hi: 1, step: 1 / 254, nodata: 255 } } }
   const s1 = new Uint8ClampedArray(N * N * 4), s2 = new Uint8ClampedArray(N * N * 4)
   for (let i = 0; i < N * N; i++) { s1[4 * i] = Math.round((tmaxK - 41) / (287 / 254)); s1[4 * i + 1] = 100; s1[4 * i + 2] = 255; s1[4 * i + 3] = 255; s2[4 * i] = 127; s2[4 * i + 1] = 127; s2[4 * i + 2] = 0; s2[4 * i + 3] = 255 }
-  return new TerrainField(meta, async () => t, async () => e, new ScienceGrid(sm, s1, s2))
+  return new TerrainField(meta, async () => t, async () => e, new ScienceGrid(sm, s1, s2), async () => v)
 }
 
 describe('100 m plane-fit slope, roughness, science', () => {
@@ -154,6 +155,12 @@ describe('100 m plane-fit slope, roughness, science', () => {
     expect(row(near, 'icetherm').status).toBe('PASS')
     expect(near.science.status).toBe('PASS')
     expect(row(near, 'hydrogen').status).toBe('NOT_EVALUATED')
+  })
+  it('EVA slope on the 1.6 km baseline gates Operations', async () => {
+    expect(row(await run(lunarField(4, 0.4, 300, undefined, 8)), 'eva2km').status).toBe('PASS')
+    const bad = await run(lunarField(4, 0.4, 300, undefined, 24))
+    expect(row(bad, 'eva2km').status).toBe('FAIL')
+    expect(bad.operations.status).toBe('FAIL')
   })
   it('PSR only beyond EVA reach is a WARNING', async () => {
     const far = await run(lunarField(4, 0.4, 300, { i: -40, j: 0 }))

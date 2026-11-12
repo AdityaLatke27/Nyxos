@@ -33,6 +33,10 @@ export interface TerrainCell {
   heightM: number | null
   /** max − min height inside the cell (m, saturates at 250) */
   reliefM: number | null
+  /** plane-fit slope over 1600 m / 800 m / 400 m baselines (deg), null when the EVA-scale tiles are absent */
+  slope1600: number | null
+  slope800: number | null
+  slope400: number | null
   x: number
   y: number
 }
@@ -105,8 +109,10 @@ export class TerrainField {
   readonly meta: TerrainMeta
   private loadT: TileLoader
   private loadE: TileLoader
+  private loadV: TileLoader | null
   readonly science: ScienceGrid | null
-  constructor(meta: TerrainMeta, loadT: TileLoader, loadE: TileLoader, science: ScienceGrid | null) {
+  constructor(meta: TerrainMeta, loadT: TileLoader, loadE: TileLoader, science: ScienceGrid | null, loadV: TileLoader | null = null) {
+    this.loadV = loadV
     this.meta = meta
     this.loadT = loadT
     this.loadE = loadE
@@ -134,7 +140,9 @@ export class TerrainField {
       for (let ty = lo(r0); ty <= Math.min(t.tilesPerSide - 1, Math.floor(r1 / T)); ty++)
         for (let tx = lo(c0); tx <= Math.min(t.tilesPerSide - 1, Math.floor(c1 / T)); tx++) {
           if (!this.have.get(t.id)!.has(`${ty}_${tx}`)) continue
-          for (const [set, loader] of [['t', this.loadT], ['e', this.loadE]] as const) {
+          const sets: (readonly [string, TileLoader])[] = [['t', this.loadT], ['e', this.loadE]]
+          if (this.loadV) sets.push(['v', this.loadV])
+          for (const [set, loader] of sets) {
             const key = `${set}_${t.id}_${ty}_${tx}`
             if (this.cache.has(key)) continue
             this.cache.set(key, null)
@@ -162,9 +170,14 @@ export class TerrainField {
         heightM = ((e[o] << 8) | e[o + 1]) * 0.5 - 10000
         reliefM = e[o + 2]
       }
+      const v = this.cache.get(`v_${t.id}_${p.ty}_${p.tx}`)
+      const hasV = !!v && v[o] !== 255
       return {
         tier: t.id,
         cellM: t.cellM,
+        slope1600: hasV ? v![o] / 2 : null,
+        slope800: hasV ? v![o + 1] / 2 : null,
+        slope400: hasV ? v![o + 2] / 2 : null,
         slope100: d[o] / 2,
         roughM: d[o + 1] * 0.02,
         psrPct: d[o + 2],
@@ -193,6 +206,25 @@ export class TerrainField {
         if (!rough || c.roughM > rough.roughM) rough = c
       }
     return { worst, rough, n }
+  }
+
+  /** EVA-scale slope: 1600 m-baseline plane-fit slope at the site and the steepest/shares inside the EVA disc. */
+  evaStats(x: number, y: number, radiusM: number, step: number, limitDeg: number) {
+    let n = 0, over = 0, max = -1
+    let site: number | null = null
+    const k = Math.ceil(radiusM / step)
+    for (let j = -k; j <= k; j++)
+      for (let i = -k; i <= k; i++) {
+        if (Math.hypot(i, j) * step > radiusM) continue
+        const c = this.cellAt(x + i * step, y + j * step)
+        if (!c || c.slope1600 === null) continue
+        n++
+        if (c.slope1600 > limitDeg) over++
+        if (c.slope1600 > max) max = c.slope1600
+        if (i === 0 && j === 0) site = c.slope1600
+      }
+    if (!n) return null
+    return { n, overPct: (100 * over) / n, maxDeg: max, siteDeg: site }
   }
 
   /** Nearest PSR cell (≥ 50 % PSR) within maxM of (x, y). */
@@ -288,7 +320,9 @@ export function loadTerrainField(base = '/landing'): Promise<TerrainField | null
       } catch {
         sci = null
       }
-      return new TerrainField(meta, tileLoader(`${base}/t`), tileLoader(`${base}/e`), sci)
+      let hasV = false
+      try { hasV = (await fetch(`${base}/eva.json`)).headers.get('content-type')?.includes('json') ?? false } catch { hasV = false }
+      return new TerrainField(meta, tileLoader(`${base}/t`), tileLoader(`${base}/e`), sci, hasV ? tileLoader(`${base}/v`) : null)
     } catch {
       return null
     }

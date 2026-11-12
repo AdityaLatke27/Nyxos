@@ -309,6 +309,7 @@ export default function LandingApp() {
               <table className="ld-t"><tbody>
                 <tr><td>Landing slope (verdict)</td><td>NASA PGDA LOLA plane-fit slope over a 100 m baseline (50 m pixels), the same baseline as the NASA requirement. Covers 80°S to the pole.</td></tr>
                 <tr><td>Slope cross-check, EVA map</td><td>NASA PGDA LOLA slope maps (10–60 m native). Cell value = 95th-percentile slope of the native pixels; 60°S to the pole.</td></tr>
+                <tr><td>EVA slope (verdict)</td><td>NASA PGDA LOLA plane-fit slope over a 1600 m baseline, the nearest published baseline to the 2 km of the requirement. 80°S to the pole.</td></tr>
                 <tr><td>Roughness, elevation, shadowed regions</td><td>PGDA LOLA roughness (100 m baseline), LDEM height (20 m) and permanently shadowed region map (20 m); 80°S to the pole.</td></tr>
                 <tr><td>Temperature and ice stability</td><td>LRO Diviner maximum and mean temperature, ice-table depth and cold-trap fraction, 240 m bins, 80°S to the pole (Williams et al. 2019; Schorghofer and Williams 2020).</td></tr>
                 <tr><td>Terrain for shadows</td><td>NYXOS elevation pyramid, 20–500 m cells from LOLA / SLDEM2015; local resolution ≈ {Math.round(a.demResolutionM)} m here.</td></tr>

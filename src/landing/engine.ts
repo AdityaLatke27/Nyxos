@@ -282,6 +282,7 @@ export interface LunarSite {
   psr: PsrSearch | null
   thermal: { tmaxK: number | null; tmeanK: number | null; f110Summer: number | null; f110Winter: number | null; iceTableM: number | null } | null
   nearestCold: { distM: number; tmaxK: number; iceTableM: number | null } | null
+  eva: { n: number; overPct: number; maxDeg: number; siteDeg: number | null } | null
 }
 
 export interface Verdict {
@@ -445,6 +446,7 @@ export function evaluate(inp: EvalInput): Assessment {
           cell: tc, zoneWorst: z.worst, zoneRough: z.rough, zoneCells: z.n, psr,
           thermal: sci ? { tmaxK: sci.tmaxK, tmeanK: sci.tmeanK, f110Summer: sci.f110Summer, f110Winter: sci.f110Winter, iceTableM: sci.iceTableM } : null,
           nearestCold: cold,
+          eva: lunar.evaStats(P.x, P.y, lim.evaRadiusM.value, tc.cellM, lim.maxEvaSlopeDeg.value),
         }
       }
     }
@@ -482,7 +484,7 @@ export function evaluate(inp: EvalInput): Assessment {
   if (eva) {
     rows.push({
       id: 'eva',
-      label: 'EVA terrain within 2 km',
+      label: 'EVA reachable area (native-pixel map)',
       status: 'INFO',
       value: `${eva.reachablePct.toFixed(0)}% of the area reachable under ${lim.maxEvaSlopeDeg.value}°; ${eva.steepPct.toFixed(0)}% steeper`,
       limit: `slope < ${lim.maxEvaSlopeDeg.value}° over 2 km`,
@@ -494,8 +496,25 @@ export function evaluate(inp: EvalInput): Assessment {
     })
   } else {
     rows.push({
-      id: 'eva', label: 'EVA terrain within 2 km', status: 'NOT_EVALUATED', value: 'no slope data', limit: `slope < ${lim.maxEvaSlopeDeg.value}° over 2 km`,
+      id: 'eva', label: 'EVA reachable area (native-pixel map)', status: 'NOT_EVALUATED', value: 'no slope data', limit: `slope < ${lim.maxEvaSlopeDeg.value}° over 2 km`,
       limitSource: lim.maxEvaSlopeDeg.source, tag: 'N/A', basis: slopeBasis, why: 'needs the lander-scale slope map', gating: false,
+    })
+  }
+
+  // ---- EVA slope on the NASA 2 km baseline (1600 m plane-fit slope, the nearest published baseline)
+  if (site?.eva) {
+    const ev = site.eva, lm = lim.maxEvaSlopeDeg.value
+    const sd = ev.siteDeg
+    let status: Status = 'PASS'
+    let why = `the 1.6 km-baseline slope is within ${lm}° everywhere inside the ${(lim.evaRadiusM.value / 1000).toFixed(0)} km EVA radius`
+    if (sd !== null && sd > lm) { status = 'FAIL'; why = `the 1.6 km-baseline slope at the site itself (${sd.toFixed(1)}°) exceeds the ${lm}° EVA limit` }
+    else if (ev.overPct > 0) { status = 'WARNING'; why = `${ev.overPct.toFixed(0)}% of the EVA disc is steeper than ${lm}° on the 1.6 km baseline (steepest ${ev.maxDeg.toFixed(1)}°); NASA gives no required reachable share` }
+    rows.push({
+      id: 'eva2km', label: 'EVA slope (2 km baseline)', status,
+      value: `${sd === null ? 'n/a' : sd.toFixed(1) + '° at the site'}, steepest ${ev.maxDeg.toFixed(1)}°, ${ev.overPct.toFixed(0)}% of cells over ${lm}°`,
+      limit: `slope < ${lm}° over 2 km`, limitSource: lim.maxEvaSlopeDeg.source, tag: 'DEM',
+      basis: 'LOLA plane-fit slope over a 1600 m baseline (PGDA LDRM SLP_1600M), the nearest published baseline to the 2 km of the requirement; 50 m pixels',
+      why, gating: true,
     })
   }
 
@@ -657,7 +676,7 @@ export function evaluate(inp: EvalInput): Assessment {
   })
 
   const safetyRows = rows.filter((r) => ['band', 'slope'].includes(r.id))
-  const opsRows = rows.filter((r) => ['sun', 'earth'].includes(r.id))
+  const opsRows = rows.filter((r) => ['sun', 'earth', 'eva2km'].includes(r.id))
   const safety = roll(safetyRows)
   const operations = roll(opsRows)
   const science = roll(rows.filter((r) => ['coldtrap', 'icetherm'].includes(r.id)))
