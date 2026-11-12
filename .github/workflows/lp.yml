@@ -1,0 +1,20 @@
+name: lp-hydrogen
+on:
+  push:
+    branches: [data-lp]
+permissions:
+  contents: write
+jobs:
+  b:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set +e
+          mkdir w && cd w
+          for f in hydrogenhd.txt hydrogenlow.txt epis.txt; do curl -sSL -m 300 --retry 3 -o $f https://pds-geosciences.wustl.edu/missions/lunarp/reduced/$f; ls -l $f; done
+          echo "=== HEAD hd"; head -30 hydrogenhd.txt | cut -c1-200
+          echo "=== HEAD low"; head -30 hydrogenlow.txt | cut -c1-200
+          echo "=== SOUTH hd sample"; grep -v '^#' hydrogenhd.txt | head -5; grep -v '^#' hydrogenhd.txt | wc -l
+          echo "=== POLE rows"; grep -v '^#' hydrogenlow.txt | awk -F, '$2<=-84' | head -12
