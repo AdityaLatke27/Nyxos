@@ -186,7 +186,7 @@ function Report({ c, print }: { c: ReportContext; print: boolean }) {
       <h3>Validation against NASA illumination maps</h3>
       <p>{validationSentence()} Test files and scripts are in the repository (tools/validation).</p>
       <h3>Earth visibility</h3>
-      <p>The Earth's direction and distance use the same ephemeris. The Earth disc (6371 km radius) is tested against the terrain horizon. This is geometric visibility only; a usable radio link also depends on antenna pointing, power and range.</p>
+      <p>The Earth's direction and distance use the same ephemeris. The Earth disc (6371 km radius) is tested against the terrain horizon. This is geometric visibility only; a usable radio link also depends on antenna pointing, power and range. When link assumptions are entered, an informational row applies the standard link equation (Eb/N0 = Ptx + Gtx − free-space loss − losses + G/T + 228.6 − 10 log10 data rate) at the nearest and farthest Earth distance of the stay; the inputs are the user's own, and the row never changes a verdict.</p>
       <h3>Windows</h3>
       <p>For every 30-minute start time in the next year, the stay is checked against the lit (and Earth-visible) series using prefix sums. No interpolation across data gaps.</p>
       <h3>Persistent shadow</h3>

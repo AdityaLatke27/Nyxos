@@ -266,3 +266,23 @@ describe('site comparison helpers', () => {
     expect(c.split('\n').find((l) => l.startsWith('"Safety verdict"'))).toBe('"Safety verdict","PASS","FAIL"')
   })
 })
+
+import { DEFAULT_LINK, fspl, linkMarginDb, linkResult } from './linkBudget'
+describe('link budget', () => {
+  it('free-space path loss matches the textbook value (2.2 GHz at 384 400 km is about 210.9 dB)', () => {
+    expect(fspl(384400, 2.2)).toBeCloseTo(210.9, 0)
+  })
+  it('margin falls 6 dB when the distance doubles and 3 dB when the data rate doubles', () => {
+    const m = linkMarginDb(DEFAULT_LINK, 200000)
+    expect(m - linkMarginDb(DEFAULT_LINK, 400000)).toBeCloseTo(6.02, 1)
+    expect(m - linkMarginDb({ ...DEFAULT_LINK, dataRateKbps: 200 }, 200000)).toBeCloseTo(3.01, 1)
+  })
+  it('reports whether the link closes at the far distance and the downlink volume', () => {
+    const r = linkResult(DEFAULT_LINK, 356000, 407000, 10)
+    expect(r.marginNearDb).toBeGreaterThan(r.marginFarDb)
+    expect(r.volumeMB).toBeCloseTo((100 * 1000 * 36000) / 8 / 1e6, 5)
+    const dead = linkResult({ ...DEFAULT_LINK, txPowerW: 0.0001 }, 356000, 407000, 10)
+    expect(dead.closesAtAll).toBe(false)
+    expect(dead.volumeMB).toBe(0)
+  })
+})

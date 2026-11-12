@@ -7,6 +7,7 @@ import { siteFrame } from '../sim/terrain/cpuTerrain'
 import { greatCircleKm } from '../analysis/geo'
 import { HazardField, polarXY, type HazardCell } from './hazard'
 import type { LanderProfile } from './profile'
+import { LINK_SOURCE, linkResult, type LinkInputs } from './linkBudget'
 
 /**
  * Landing assessment. Three separate verdicts (Safety, Operations, Science); never a blended
@@ -352,6 +353,8 @@ export interface EvalInput {
   lunar?: TerrainField | null
   /** analysis horizon for the window finder (days) */
   scanDays?: number
+  /** optional radio link assumptions; adds an informational link-budget row */
+  link?: LinkInputs
 }
 
 export function evaluate(inp: EvalInput): Assessment {
@@ -705,6 +708,26 @@ export function evaluate(inp: EvalInput): Assessment {
     earthRow.why = 'no direct-to-Earth requirement for this profile'
   }
   rows.push(earthRow)
+
+  if (inp.link) {
+    const lk = inp.link
+    let near = Infinity, far = 0
+    for (let t = 0; t <= stayDays * DAY + 1; t += 6 * 3600000) {
+      const st = moonState(new Date(startMs + t))
+      near = Math.min(near, st.earthDistKm)
+      far = Math.max(far, st.earthDistKm)
+    }
+    const res = linkResult(lk, near, far, (stats.earthPct / 100) * stayDays * 24)
+    const sg = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} dB`
+    rows.push({
+      id: 'link', label: 'Direct-to-Earth link margin (your assumptions)', status: 'INFO',
+      value: `${sg(res.marginFarDb)} at the farthest Earth distance (${Math.round(far / 1000) * 1000} km), ${sg(res.marginNearDb)} at the nearest (${Math.round(near / 1000) * 1000} km); ${res.volumeMB <= 0 ? 'no downlink' : `at most ${res.volumeMB >= 1000 ? (res.volumeMB / 1000).toFixed(1) + ' GB' : res.volumeMB.toFixed(0) + ' MB'} downlink while Earth is visible`}`,
+      limit: `Margin of at least ${lk.requiredMarginDb} dB above ${lk.requiredEbN0dB} dB Eb/N0`, limitSource: LINK_SOURCE, tag: 'MODEL',
+      basis: `${lk.freqGHz} GHz, ${lk.txPowerW} W, ${lk.txGainDbi} dBi, ground G/T ${lk.gOverTdBK} dB/K, ${lk.dataRateKbps} kbps; Earth distance from the Sun/Earth ephemeris used for this analysis`,
+      why: res.closesThroughout ? 'the link closes with the stated margin at every Earth distance in the stay, whenever Earth is above the horizon' : res.closesAtAll ? 'the link closes with the stated margin only at the nearer Earth distances in the stay' : 'the link does not close with the stated margin at any Earth distance in the stay',
+      gating: false,
+    })
+  }
 
   rows.push({
     id: 'window', label: 'Launch / landing windows (next year)', status: 'INFO',

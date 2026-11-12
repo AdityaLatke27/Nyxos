@@ -10,6 +10,8 @@ import { loadTerrainField, type TerrainField } from '../terrain'
 import { evaluate, type Status } from '../engine'
 import { loadEphemerisTable } from '../../astro/ephemerisTable'
 import { NASA_HLS } from '../profile'
+import { DEFAULT_LINK, type LinkInputs } from '../linkBudget'
+import LinkForm from './LinkForm'
 import { ROBUSTNESS_LABEL } from '../sensitivity'
 import { WUELLER_SITES } from '../candidateSites'
 import { compareCsv, rowDiffers, rowFor, rowList, verdictSummary, type CompareResult, type SiteEntry } from '../compare'
@@ -53,6 +55,7 @@ export default function CompareApp() {
   const terrain = useMemo(() => (assets ? new CpuTerrain(assets) : null), [assets])
   const [picked, setPicked] = useState<SiteEntry[]>([])
   const [start, setStart] = useState(nextMidnight())
+  const [link, setLink] = useState<LinkInputs>(DEFAULT_LINK)
   const [stay, setStay] = useState(NASA_HLS.stayDays.value)
   const [onlyDiff, setOnlyDiff] = useState(false)
   const [query, setQuery] = useState('')
@@ -96,7 +99,7 @@ export default function CompareApp() {
             if (lunar) await lunar.ensure(p.x, p.y, profile.coldTrapReachM.value + 600)
           }
           await new Promise((r) => setTimeout(r, 10))
-          const a = evaluate({ lat: entry.lat, lon: entry.lon, startMs: start, profile, terrain, hazard, lunar })
+          const a = evaluate({ lat: entry.lat, lon: entry.lon, startMs: start, profile, terrain, hazard, lunar, link })
           out.push({ entry, a })
         } catch (e) {
           out.push({ entry, a: null, error: (e as Error).message })
@@ -108,7 +111,7 @@ export default function CompareApp() {
       if (id === runId.current) setProgress(null)
     }, 150)
     return () => clearTimeout(handle)
-  }, [terrain, assets, hazard, lunar, ready, picked, start, profile])
+  }, [terrain, assets, hazard, lunar, ready, picked, start, profile, link])
 
   if (error) return <div className="ld-root"><NavRail active="compare" /><p className="ld-error">{error}</p></div>
   if (!assets) return <Loader stage="download" downloaded={bytes.l} total={bytes.t} bake={0} error={null} />
@@ -148,6 +151,7 @@ export default function CompareApp() {
               <label className="cmp-add">Landing time (UTC)<input type="datetime-local" value={toInput(start)} onChange={(e) => { const v = Date.parse(e.target.value + 'Z'); if (!Number.isNaN(v)) setStart(v) }} /></label>
               <label className="cmp-add">Stay (days)<input type="number" min={1} max={30} step={0.5} value={stay} onChange={(e) => setStay(Math.max(1, Math.min(30, +e.target.value || 1)))} /></label>
             </div>
+            <LinkForm value={link} onChange={setLink} />
             <p className="ld-hint">Lander: {NASA_HLS.name}. Stay default is an assumption for Artemis III and can be changed.</p>
           </div>
           <div className="cmp-add">

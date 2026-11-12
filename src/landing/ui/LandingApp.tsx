@@ -14,6 +14,8 @@ import { loadEphemerisTable } from '../../astro/ephemerisTable'
 import { NASA_HLS, customProfile, type LanderProfile } from '../profile'
 import { INSTRUMENTS, nearbyFeatures, nearbyMissions, shadowScan, yearSunDirs, type ShadowScan } from '../nearby'
 import { buildReport, downloadText, reportCsv, type ReportContext } from '../report'
+import { DEFAULT_LINK, type LinkInputs } from '../linkBudget'
+import LinkForm from './LinkForm'
 import PolarPicker from './PolarPicker'
 import Landing3D, { webglAvailable } from './Landing3D'
 import { DARK, HazardMap, HorizonChart, SensitivityChart, ShadowMap, SlopeHistogram, TimelineChart, WindowCalendar } from './Charts'
@@ -64,6 +66,7 @@ export default function LandingApp() {
   const [profileId, setProfileId] = useState<'nasa-hls' | 'custom'>('nasa-hls')
   const [cust, setCust] = useState({ slope: 10, evaSlope: 20, lit: false, earth: false, polar: false })
   const [stay, setStay] = useState(NASA_HLS.stayDays.value)
+  const [link, setLink] = useState<LinkInputs>(DEFAULT_LINK)
   const [start, setStart] = useState(nextMidnight())
   const [query, setQuery] = useState('')
   const [mode3d, setMode3d] = useState(() => params.get('map') !== '2d' && webglAvailable())
@@ -109,7 +112,7 @@ export default function LandingApp() {
       await loadEphemerisTable()
       await new Promise((r) => setTimeout(r, 20))
       if (id !== runId.current) return
-      const res = evaluate({ lat: site.lat, lon: site.lon, startMs: start, profile, terrain, hazard, lunar })
+      const res = evaluate({ lat: site.lat, lon: site.lon, startMs: start, profile, terrain, hazard, lunar, link })
       if (id !== runId.current) return
       setA(res)
       setBusy(false)
@@ -117,7 +120,7 @@ export default function LandingApp() {
       const sc = await shadowScan(terrain, site.lat, site.lon, yearSunDirs(start))
       if (id === runId.current) setShadow(sc)
     })()
-  }, [terrain, assets, hazard, lunar, site, profile, start, near])
+  }, [terrain, assets, hazard, lunar, site, profile, start, near, link])
 
   const pick = useCallback((lat: number, lon: number, name?: string) => setSite({ lat, lon, name: name ?? `Point ${fmtLat(lat)} ${fmtLon(lon)}` }), [])
 
@@ -212,6 +215,7 @@ export default function LandingApp() {
               <label>Landing time (UTC)<input type="datetime-local" value={toInput(start)} onChange={(e) => { const v = Date.parse(e.target.value + 'Z'); if (!Number.isNaN(v)) setStart(v) }} /></label>
               <label>Stay (days)<input type="number" min={1} max={30} step={0.5} value={stay} onChange={(e) => setStay(Math.max(1, Math.min(30, +e.target.value || 1)))} /></label>
             </div>
+            <LinkForm value={link} onChange={setLink} />
             <p className="ld-hint">Stay default is an assumption for Artemis III and can be changed. {hazardNote}.</p>
           </div>
         </section>
