@@ -122,7 +122,6 @@ export async function shadowScan(
 }
 
 export const INSTRUMENTS = [
-  { id: 'diviner', name: 'LRO Diviner surface temperature', answers: 'Is the ground cold enough (≲ 110 K) to hold volatiles?' },
   { id: 'lend', name: 'LRO LEND neutron flux', answers: 'Is hydrogen enhanced? (coarse, ~10 km footprint)' },
   { id: 'lamp', name: 'LRO LAMP far-UV albedo', answers: 'Is there frost-like surface reflectance in shadow?' },
   { id: 'minirf', name: 'LRO Mini-RF radar (CPR)', answers: 'Is there a radar signature consistent with ice or just rough rock?' },

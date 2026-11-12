@@ -24,6 +24,10 @@ export interface LanderProfile {
   /** True when direct-to-Earth communication is required (no relay). */
   requireDirectEarth: Limit<boolean>
   stayDays: Limit<number>
+  /** Science: how far from the site a cold trap may be and still count (traverse reach). */
+  coldTrapReachM: Limit<number>
+  /** Science: maximum surface temperature below which water ice is stable at the surface. */
+  iceStableTempK: Limit<number>
 }
 
 const HLS_SRC = 'NASA Artemis HLS update, NTRS 20240009596 ("Key Artemis III Landing Requirements")'
@@ -42,6 +46,8 @@ export const NASA_HLS: LanderProfile = {
     value: 6.5,
     source: 'NYXOS assumption for the Artemis III surface stay (not stated in the NASA slides read); editable',
   },
+  coldTrapReachM: { value: 10000, source: 'NYXOS assumption: traverse range within which a cold trap is still reachable for science; editable' },
+  iceStableTempK: { value: 110, source: 'Diviner polar products use 110 K as the cold-trap threshold (Williams et al. 2019, JGR 124, 2505); ice is stable at the surface below about this temperature' },
 }
 
 export function customProfile(over: Partial<{ slope: number; evaSlope: number; stayDays: number; lit: boolean; earth: boolean; band: number | null }>): LanderProfile {
@@ -57,5 +63,7 @@ export function customProfile(over: Partial<{ slope: number; evaSlope: number; s
     requireLitWholeStay: { value: over.lit ?? false, source: u },
     requireDirectEarth: { value: over.earth ?? false, source: u },
     stayDays: { value: over.stayDays ?? 6.5, source: u },
+    coldTrapReachM: NASA_HLS.coldTrapReachM,
+    iceStableTempK: NASA_HLS.iceStableTempK,
   }
 }

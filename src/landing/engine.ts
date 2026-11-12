@@ -1,6 +1,7 @@
 import { SUN_RADIUS_DEG, discAbove } from '../sim/analysis/siteAnalysis'
 import { horizonAt } from '../sim/terrain/cpuTerrain'
 import { ephemerisSource, moonState } from '../astro/ephemeris'
+import type { TerrainCell, TerrainField, PsrSearch } from './terrain'
 import { siteFrame } from '../sim/terrain/cpuTerrain'
 import { greatCircleKm } from '../analysis/geo'
 import { HazardField, polarXY, type HazardCell } from './hazard'
@@ -256,6 +257,8 @@ export interface Assessment {
   rows: Row[]
   safety: Verdict
   operations: Verdict
+  science: Verdict
+  lunar: LunarSite | null
   headline: { level: 'FEASIBLE' | 'CONDITIONAL' | 'NOT_RECOMMENDED' | 'CANNOT_ASSESS'; text: string }
   hazardCell: HazardCell | null
   zoneWorst: HazardCell | null
@@ -269,6 +272,16 @@ export interface Assessment {
   ephemeris: 'JPL DE440' | 'analytic model'
   demResolutionM: number
   gaps: string[]
+}
+
+export interface LunarSite {
+  cell: TerrainCell
+  zoneWorst: TerrainCell
+  zoneRough: TerrainCell
+  zoneCells: number
+  psr: PsrSearch | null
+  thermal: { tmaxK: number | null; tmeanK: number | null; f110Summer: number | null; f110Winter: number | null; iceTableM: number | null } | null
+  nearestCold: { distM: number; tmaxK: number; iceTableM: number | null } | null
 }
 
 export interface Verdict {
@@ -296,12 +309,14 @@ export interface EvalInput {
   profile: LanderProfile
   terrain: TerrainLike
   hazard: HazardField | null
+  /** 100 m plane-fit slope, roughness, elevation, PSR and Diviner layers (null when not available) */
+  lunar?: TerrainField | null
   /** analysis horizon for the window finder (days) */
   scanDays?: number
 }
 
 export function evaluate(inp: EvalInput): Assessment {
-  const { lat, lon, startMs, profile, terrain, hazard } = inp
+  const { lat, lon, startMs, profile, terrain, hazard, lunar } = inp
   const stayDays = profile.stayDays.value
   const hKm = terrain.heightAtLatLon(lat, lon)
   const demM = terrain.resolutionKmAt(lat, lon) * 1000
@@ -415,6 +430,54 @@ export function evaluate(inp: EvalInput): Assessment {
     })
   }
 
+  // ---- true 100 m-baseline plane-fit slope (the NASA baseline), roughness, elevation, PSR, Diviner
+  let site: LunarSite | null = null
+  if (lunar && P) {
+    const tc = lunar.cellAt(P.x, P.y)
+    if (tc) {
+      const z = lunar.zoneStats(P.x, P.y, lim.landingZoneRadiusM.value, tc.cellM)
+      const reach = lim.coldTrapReachM.value
+      const psr = lunar.nearestPsr(P.x, P.y, reach, tc.cellM)
+      const sci = lunar.science?.at(P.x, P.y) ?? null
+      const cold = lunar.nearestCold(P.x, P.y, reach, lim.iceStableTempK.value)
+      if (z.worst && z.rough) {
+        site = {
+          cell: tc, zoneWorst: z.worst, zoneRough: z.rough, zoneCells: z.n, psr,
+          thermal: sci ? { tmaxK: sci.tmaxK, tmeanK: sci.tmeanK, f110Summer: sci.f110Summer, f110Winter: sci.f110Winter, iceTableM: sci.iceTableM } : null,
+          nearestCold: cold,
+        }
+      }
+    }
+  }
+  if (site) {
+    const w = site.zoneWorst.slope100
+    const err = cell?.errDeg ?? 0
+    let status: Status
+    let why: string
+    if (w > slopeLim) {
+      status = 'FAIL'
+      why = `the steepest ${site.zoneWorst.cellM} m cell in the landing zone has a ${w.toFixed(1)}° plane-fit slope over 100 m, above the ${slopeLim}° limit`
+    } else if (w + err > slopeLim) {
+      status = 'WARNING'
+      why = `steepest 100 m plane-fit slope ${w.toFixed(1)}° is within the limit, but with the map's slope error (${err.toFixed(1)}°) it could reach ${slopeLim}°`
+    } else {
+      status = 'PASS'
+      why = `steepest 100 m plane-fit slope in the landing zone is ${w.toFixed(1)}°${err ? ` (+${err.toFixed(1)}° map error)` : ''}, within the limit`
+    }
+    const existing = rows.findIndex((r) => r.id === 'slope')
+    if (existing >= 0) {
+      const o = rows[existing]
+      rows[existing] = { ...o, id: 'slope10', label: 'Slope, 10 m-scale cross-check', gating: false, why: `conservative cross-check at the native pixel scale, not the NASA baseline: ${o.why}` }
+    }
+    rows.splice(existing >= 0 ? existing : rows.length, 0, {
+      id: 'slope', label: 'Landing-zone slope (100 m baseline)', status,
+      value: `${w.toFixed(1)}° steepest cell, ${site.zoneCells} cells checked`,
+      limit: `< ${slopeLim}° over 100 m`, limitSource: lim.maxLandingSlopeDeg.source, tag: 'DEM',
+      basis: `LOLA plane-fit slope, 100 m baseline, 50 m pixels (PGDA LDRM SLP_100M), ${site.zoneWorst.cellM} m cells (${site.zoneWorst.tier.toUpperCase()}); same baseline as the NASA limit`,
+      why, gating: true,
+    })
+  }
+
   // ---- EVA terrain (reported, no published coverage threshold)
   if (eva) {
     rows.push({
@@ -452,6 +515,90 @@ export function evaluate(inp: EvalInput): Assessment {
     basis: 'none', why: 'no boulder or small-crater map is loaded; a high-resolution hazard survey is still needed', gating: false,
   })
   gaps.push('Boulder and small-crater hazards are not assessed (no dataset loaded).')
+
+  // ---- terrain character, temperature (reported)
+  if (site) {
+    const rz = site.zoneRough
+    rows.push({
+      id: 'rough', label: 'Surface roughness (100 m baseline)', status: 'INFO',
+      value: `${rz.roughM.toFixed(2)} m RMS residual (roughest cell in the landing zone)`,
+      limit: 'no published HLS limit', limitSource: 'NASA publishes no roughness limit in the sources used; shown for judgement', tag: 'DEM',
+      basis: 'LOLA roughness, spread of height residuals about a plane over a 100 m baseline (PGDA LDRM ROUGH_100M, 50 m pixels)',
+      why: 'reported only: no roughness limit is available to judge against', gating: false,
+    })
+    const hz = site.cell.heightM
+    rows.push({
+      id: 'elev', label: 'Elevation and local relief', status: 'INFO',
+      value: hz === null ? 'n/a' : `${hz.toFixed(0)} m above the 1737.4 km reference sphere, relief ${site.cell.reliefM === null ? 'n/a' : site.cell.reliefM >= 250 ? '≥ 250' : site.cell.reliefM.toFixed(0)} m within the ${site.cell.cellM} m cell`,
+      limit: 'n/a', limitSource: 'No NASA limit', tag: 'DEM',
+      basis: 'LOLA LDEM, 20 m pixels (PGDA), mean per cell', why: 'reported only', gating: false,
+    })
+    const th = site.thermal
+    rows.push({
+      id: 'temp', label: 'Surface temperature (Diviner)', status: 'INFO',
+      value: th && th.tmaxK !== null ? `max ${th.tmaxK.toFixed(0)} K, mean ${th.tmeanK === null ? 'n/a' : th.tmeanK.toFixed(0) + ' K'}${th.f110Summer !== null ? `, below 110 K for ${(Math.min(th.f110Summer, th.f110Winter ?? th.f110Summer) * 100).toFixed(0)}–${(Math.max(th.f110Summer, th.f110Winter ?? th.f110Summer) * 100).toFixed(0)}% of a lunation` : ''}` : 'no Diviner data here',
+      limit: 'no lander thermal limit in this profile', limitSource: 'Spacecraft thermal limits are not part of the HLS requirements read', tag: 'DEM',
+      basis: 'Diviner bolometric brightness temperature, 240 m bins, 2009–2020 (Williams et al. 2019; Schorghofer & Williams 2020)',
+      why: 'reported only; surface temperature is a bound on the environment, not a lander survival check', gating: false,
+    })
+  } else {
+    gaps.push('100 m plane-fit slope, roughness, elevation and temperature layers are not available at this location (only 80–90°S is covered).')
+  }
+
+  // ---- science: cold traps and volatile evidence (evidence, never proof of ice)
+  const sciRows: Row[] = []
+  if (site && P) {
+    const reach = lim.coldTrapReachM.value
+    const eR = lim.evaRadiusM.value
+    const ps = site.psr
+    const psrRow: Row = {
+      id: 'coldtrap', label: 'Permanently shadowed region within reach', status: 'NOT_EVALUATED',
+      value: '', limit: `a PSR within ${(eR / 1000).toFixed(0)} km (EVA) or ${(reach / 1000).toFixed(0)} km (traverse)`,
+      limitSource: lim.coldTrapReachM.source, tag: 'DEM',
+      basis: 'LOLA permanently shadowed region map, 20 m pixels, aggregated to 100 m cells (PGDA LPSR, Mazarico et al. method)', why: '', gating: true,
+    }
+    if (ps) {
+      psrRow.value = ps.distM === 0 ? 'the site cell is inside a PSR' : `nearest PSR ${ps.distM >= 1000 ? (ps.distM / 1000).toFixed(1) + ' km' : ps.distM.toFixed(0) + ' m'} away`
+      psrRow.status = ps.distM <= eR ? 'PASS' : 'WARNING'
+      psrRow.why = ps.distM <= eR ? 'a permanently shadowed region lies within EVA reach' : 'a permanently shadowed region exists, but only within the longer traverse reach'
+    } else {
+      psrRow.value = `none within ${(reach / 1000).toFixed(0)} km`
+      psrRow.status = 'FAIL'
+      psrRow.why = 'no permanently shadowed region within the traverse reach, so no cold-trap access'
+    }
+    sciRows.push(psrRow)
+    const cn = site.nearestCold
+    const T = lim.iceStableTempK.value
+    const thRow: Row = {
+      id: 'icetherm', label: 'Thermal stability of surface ice', status: 'NOT_EVALUATED', value: '',
+      limit: `maximum temperature ≤ ${T} K within ${(reach / 1000).toFixed(0)} km`, limitSource: lim.iceStableTempK.source, tag: 'DEM',
+      basis: 'Diviner maximum bolometric temperature, 240 m bins; ice-table depth from the thermal model (Schorghofer & Williams 2020)', why: '', gating: true,
+    }
+    if (!lunar?.science) {
+      thRow.value = 'Diviner grid not loaded'; thRow.why = 'the temperature layers are not available in this build'
+    } else if (cn) {
+      thRow.value = `coldest nearby bin ${cn.tmaxK.toFixed(0)} K at ${cn.distM >= 1000 ? (cn.distM / 1000).toFixed(1) + ' km' : cn.distM.toFixed(0) + ' m'}${cn.iceTableM !== null ? `, modelled ice table ${cn.iceTableM.toFixed(2)} m deep` : ''}`
+      thRow.status = cn.distM <= eR ? 'PASS' : 'WARNING'
+      thRow.why = cn.distM <= eR ? 'temperatures cold enough for stable surface ice occur within EVA reach' : 'cold-trap temperatures exist only farther away, within the traverse reach'
+    } else {
+      thRow.value = `no bin ≤ ${T} K within ${(reach / 1000).toFixed(0)} km`
+      thRow.status = 'FAIL'
+      thRow.why = 'no area cold enough for stable surface ice within the traverse reach'
+    }
+    sciRows.push(thRow)
+    sciRows.push({
+      id: 'hydrogen', label: 'Hydrogen / neutron evidence (LEND)', status: 'NOT_EVALUATED', value: 'no dataset loaded',
+      limit: 'n/a', limitSource: 'LRO LEND epithermal-neutron maps (not loaded; no verified downloadable raster found)', tag: 'N/A',
+      basis: 'none', why: 'neutron data is not loaded, so hydrogen enrichment is not assessed; its absence says nothing about ice', gating: false,
+    })
+  } else {
+    sciRows.push({
+      id: 'coldtrap', label: 'Permanently shadowed region within reach', status: 'NOT_EVALUATED', value: 'no terrain layers at this location',
+      limit: 'n/a', limitSource: lim.coldTrapReachM.source, tag: 'N/A', basis: 'PSR map covers 80–90°S only', why: 'outside the polar layers', gating: true,
+    })
+  }
+  rows.push(...sciRows)
+  gaps.push('Hydrogen (LEND) and any ice-detection evidence beyond cold-trap geometry and temperature are not assessed; thermal conditions favour ice but do not prove it.')
 
   // ---- operations: sunlight, Earth
   const coarse = demM > 500
@@ -513,6 +660,7 @@ export function evaluate(inp: EvalInput): Assessment {
   const opsRows = rows.filter((r) => ['sun', 'earth'].includes(r.id))
   const safety = roll(safetyRows)
   const operations = roll(opsRows)
+  const science = roll(rows.filter((r) => ['coldtrap', 'icetherm'].includes(r.id)))
 
   let headline: Assessment['headline']
   const feasibleNow = windows.litAndEarth.length > 0
@@ -528,7 +676,7 @@ export function evaluate(inp: EvalInput): Assessment {
   }
 
   return {
-    site: { lat, lon, heightM: hKm * 1000 }, profile, startMs, stayDays, rows, safety, operations, headline,
+    site: { lat, lon, heightM: hKm * 1000 }, profile, startMs, stayDays, rows, safety, operations, science, lunar: site, headline,
     hazardCell: cell, zoneWorst, eva, grid, timeline: tl, stats, windows, horizon,
     ephemeris: ephemerisSource(new Date(startMs)) === 'JPL DE440' && ephemerisSource(new Date(startMs + scan * DAY)) === 'JPL DE440' ? 'JPL DE440' : 'analytic model',
     demResolutionM: demM, gaps,

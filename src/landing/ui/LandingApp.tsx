@@ -6,6 +6,7 @@ import { CpuTerrain } from '../../sim/terrain/cpuTerrain'
 import type { SimAssets } from '../../sim/data/types'
 import { searchCraters, craterAt } from '../../analysis/craterLookup'
 import { HazardField, browserLoader, loadManifest, polarXY } from '../hazard'
+import { loadTerrainField, type TerrainField } from '../terrain'
 import { evaluate, type Assessment } from '../engine'
 import { loadEphemerisTable } from '../../astro/ephemerisTable'
 import { NASA_HLS, customProfile, type LanderProfile } from '../profile'
@@ -38,9 +39,11 @@ export default function LandingApp() {
   const [error, setError] = useState<string | null>(null)
   const [hazard, setHazard] = useState<HazardField | null>(null)
   const [hazardNote, setHazardNote] = useState('Loading slope tiles…')
+  const [lunar, setLunar] = useState<TerrainField | null>(null)
 
   useEffect(() => {
     loadSimAssets((l, t) => setBytes({ l, t })).then(setAssets).catch((e: Error) => setError(e.message))
+    loadTerrainField().then(setLunar)
     loadManifest().then((m) => {
       if (m) {
         setHazard(new HazardField(m, browserLoader()))
@@ -97,10 +100,14 @@ export default function LandingApp() {
         const p = polarXY(site.lat, site.lon)
         await hazard.ensure(p.x, p.y, 3500)
       }
+      if (lunar && site.lat < -55) {
+        const p = polarXY(site.lat, site.lon)
+        await lunar.ensure(p.x, p.y, profile.coldTrapReachM.value + 600)
+      }
       await loadEphemerisTable()
       await new Promise((r) => setTimeout(r, 20))
       if (id !== runId.current) return
-      const res = evaluate({ lat: site.lat, lon: site.lon, startMs: start, profile, terrain, hazard })
+      const res = evaluate({ lat: site.lat, lon: site.lon, startMs: start, profile, terrain, hazard, lunar })
       if (id !== runId.current) return
       setA(res)
       setBusy(false)
@@ -108,7 +115,7 @@ export default function LandingApp() {
       const sc = await shadowScan(terrain, site.lat, site.lon, yearSunDirs(start))
       if (id === runId.current) setShadow(sc)
     })()
-  }, [terrain, assets, hazard, site, profile, start, near])
+  }, [terrain, assets, hazard, lunar, site, profile, start, near])
 
   const pick = useCallback((lat: number, lon: number, name?: string) => setSite({ lat, lon, name: name ?? `Point ${fmtLat(lat)} ${fmtLon(lon)}` }), [])
 
@@ -229,13 +236,14 @@ export default function LandingApp() {
                   <ul>{a.operations.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
                 </article>
                 <article className="ld-card">
-                  <h3>Science <span className="ld-chip st-INFO"><b aria-hidden>i</b>Evidence, not a score</span></h3>
-                  <p className="q">Is it worth visiting?</p>
+                  <h3>Science <Chip s={a.science.status} /></h3>
+                  <p className="q">Is it worth visiting? <span className="ld-hint">Evidence, never proof of ice.</span></p>
                   <ul>
+                    {a.science.reasons.map((r) => <li key={r}>{r}</li>)}
                     {sci?.crater && <li>Inside {sci.crater[0]} ({sci.crater[3].toFixed(1)} km across).</li>}
                     {shadow === 'running' && <li>Scanning for permanently shadowed ground…</li>}
-                    {shadow && shadow !== 'running' && <li>{shadow.persistentPct > 0 ? `${shadow.persistentPct.toFixed(0)}% of the 4 km neighbourhood receives no direct sunlight in a model year${shadow.nearestPersistentKm !== null ? `; nearest ${shadow.nearestPersistentKm.toFixed(1)} km away` : ''}. A cold-trap candidate, not proof of ice.` : 'No persistently shadowed ground found within 4 km in the model year.'}</li>}
-                    <li>Temperature, hydrogen, UV and radar evidence are not loaded, so volatile potential is not assessed.</li>
+                    {shadow && shadow !== 'running' && <li>{shadow.persistentPct > 0 ? `${shadow.persistentPct.toFixed(0)}% of the 4 km neighbourhood receives no direct sunlight in a model year${shadow.nearestPersistentKm !== null ? `; nearest ${shadow.nearestPersistentKm.toFixed(1)} km away` : ''} (NYXOS model scan, a cross-check of the NASA PSR map).` : 'No persistently shadowed ground found within 4 km in the model year.'}</li>}
+                    <li>Hydrogen (LEND), UV and radar evidence are not loaded.</li>
                   </ul>
                 </article>
               </div>
@@ -298,7 +306,10 @@ export default function LandingApp() {
               <h2>Data and method</h2>
               <p className="ld-sub">Open the downloadable report for the full methods, validation and reference list.</p>
               <table className="ld-t"><tbody>
-                <tr><td>Slope hazard cells</td><td>NASA PGDA LOLA south-polar slope maps (10–60 m native). Cell value = 95th-percentile slope of the native pixels. Covers 60°S to the pole only.</td></tr>
+                <tr><td>Landing slope (verdict)</td><td>NASA PGDA LOLA plane-fit slope over a 100 m baseline (50 m pixels), the same baseline as the NASA requirement. Covers 80°S to the pole.</td></tr>
+                <tr><td>Slope cross-check, EVA map</td><td>NASA PGDA LOLA slope maps (10–60 m native). Cell value = 95th-percentile slope of the native pixels; 60°S to the pole.</td></tr>
+                <tr><td>Roughness, elevation, shadowed regions</td><td>PGDA LOLA roughness (100 m baseline), LDEM height (20 m) and permanently shadowed region map (20 m); 80°S to the pole.</td></tr>
+                <tr><td>Temperature and ice stability</td><td>LRO Diviner maximum and mean temperature, ice-table depth and cold-trap fraction, 240 m bins, 80°S to the pole (Williams et al. 2019; Schorghofer and Williams 2020).</td></tr>
                 <tr><td>Terrain for shadows</td><td>NYXOS elevation pyramid, 20–500 m cells from LOLA / SLDEM2015; local resolution ≈ {Math.round(a.demResolutionM)} m here.</td></tr>
                 <tr><td>Sun and Earth position</td><td>{a.ephemeris === 'JPL DE440' ? 'JPL DE440 (SPICE, Moon mean-Earth frame), hourly table with cubic interpolation; matches JPL Horizons within 0.001°.' : 'Analytic model (the requested dates are outside the DE440 table, 2026–2035); good to about 0.26° in azimuth.'} Direct sunlight only, disc half-lit counts as lit.</td></tr>
                 <tr><td>Not assessed</td><td>{a.gaps.join(' ')}</td></tr>

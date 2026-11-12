@@ -87,10 +87,11 @@ function Report({ c, print }: { c: ReportContext; print: boolean }) {
       <div className="three">
         <div className="box"><h3>Safety <Chip s={a.safety.status} /></h3><p>Can we land?</p><ul>{a.safety.reasons.map((r) => <li key={r}>{r}</li>)}</ul></div>
         <div className="box"><h3>Operations <Chip s={a.operations.status} /></h3><p>Can we complete the mission?</p><ul>{a.operations.reasons.map((r) => <li key={r}>{r}</li>)}</ul></div>
-        <div className="box"><h3>Science <span className="chip INFO">i Evidence</span></h3><p>Is it worth visiting?</p><ul>
+        <div className="box"><h3>Science <Chip s={a.science.status} /></h3><p>Is it worth visiting? Evidence, never proof of ice.</p><ul>
+          {a.science.reasons.map((r) => <li key={r}>{r}</li>)}
           {c.crater && <li>Inside {c.crater[0]} ({c.crater[3].toFixed(1)} km).</li>}
-          {shadow && <li>{shadow.persistentPct.toFixed(0)}% of the 4 km neighbourhood has no direct sunlight in a model year.</li>}
-          <li>Thermal, hydrogen, UV and radar data not loaded: volatile potential is not assessed.</li></ul></div>
+          {shadow && <li>{shadow.persistentPct.toFixed(0)}% of the 4 km neighbourhood has no direct sunlight in a model year (NYXOS scan).</li>}
+          <li>Hydrogen (LEND), UV and radar data not loaded.</li></ul></div>
       </div>
       <p className="small">NYXOS reports three separate verdicts and no combined score: a failed landing constraint cannot be offset by scientific interest. Statuses: Pass, Warning, Fail, Not evaluated (data missing or too coarse; never counted as a pass).</p>
 
@@ -142,11 +143,15 @@ function Report({ c, print }: { c: ReportContext; print: boolean }) {
       </div>
       <h3>Scientific evidence not assessed</h3>
       <table><tbody>{INSTRUMENTS.map((i) => <tr key={i.id}><td>{i.name}</td><td>{i.answers}</td><td><span className="chip NOT_EVALUATED">– Not loaded</span></td></tr>)}</tbody></table>
-      <p className="small">A cold or shadowed place is a candidate for volatiles, not proof. Independent evidence (temperature, neutron, UV, radar) is needed and is not part of this build.</p>
+      <p className="small">A cold or shadowed place is a candidate for volatiles, not proof. Independent evidence (neutron, UV, radar) is needed and is not part of this build.</p>
 
       <h2>5. Methods</h2>
       <h3>Landing-zone slope</h3>
-      <p>NASA's Planetary Geodesy Data Archive publishes LOLA south-polar slope maps at 10 m (83°S–pole), 20 m (80°S), 30 m (75°S) and 60 m (60°S). NYXOS reduces them to hazard cells (100–480 m) storing the 95th-percentile slope, the share of pixels steeper than 10° and the mean slope error. The landing zone is the cell containing the point and every cell within {a.profile.landingZoneRadiusM.value} m. PASS needs 10 m data and 95th-percentile slope plus error within the limit; FAIL needs the majority of pixels in the worst cell steeper than 10°; anything coarser than 10 m is capped at Warning. The product slope is measured over a shorter baseline than the 100 m of the NASA requirement, which makes the test conservative.</p>
+      <p>The verdict uses NASA PGDA's LOLA plane-fit slope over a 100 m baseline (product LDRM SLP_100M, 50 m pixels, 80°S to the pole), the same baseline as the NASA requirement of under 10° over 100 m. Each hazard cell (100 m near the pole, 200 m beyond 216 km) stores the steepest value in it. The landing zone is the cell containing the point and every cell within {a.profile.landingZoneRadiusM.value} m. PASS: the steepest cell is within the limit even with the map's slope error added; WARNING: within the limit but not once the error is added; FAIL: the steepest cell is over the limit. Outside 80°S the older native-pixel map is used instead (10–60 m pixels, 95th-percentile slope per cell, capped at Warning when coarser than 10 m), and it is also shown as a conservative cross-check where both exist. The EVA map still uses the native-pixel 95th-percentile slope, which is stricter than the 2 km baseline.</p>
+      <h3>Roughness, elevation and temperature</h3>
+      <p>Roughness is the spread of LOLA height residuals about the 100 m plane (PGDA LDRM ROUGH_100M); NASA publishes no roughness limit in the sources used, so it is reported without a verdict. Elevation and relief come from the 20 m LDEM. Temperatures are Diviner maximum and mean bolometric temperatures on 240 m bins (2009–2020), reported without a lander thermal limit.</p>
+      <h3>Science: cold traps</h3>
+      <p>The permanently shadowed region (PSR) map is NASA's LOLA illumination-based PSR product at 20 m. The site is checked for the nearest cell at least half PSR, within {(a.profile.coldTrapReachM.value / 1000).toFixed(0)} km. A second, independent check looks for a Diviner bin whose maximum temperature is at or below {a.profile.iceStableTempK.value} K, the cold-trap threshold of the Diviner polar products. PASS means such ground lies within the {(a.profile.evaRadiusM.value / 1000).toFixed(0)} km EVA radius, WARNING means only within the longer traverse reach, FAIL means none within reach. These distances are NYXOS assumptions and are editable. The result is evidence of thermally stable ground, not detection of ice.</p>
       <h3>Sunlight</h3>
       <p>The Sun's direction comes from {a.ephemeris === 'JPL DE440' ? 'JPL\'s DE440 ephemeris through SPICE, sampled hourly in the Moon mean-Earth/polar-axis frame (the frame of the LOLA maps) and interpolated with a four-point cubic. It agrees with JPL Horizons to 0.0007° in elevation and 0.0001° in azimuth over 847 test samples at seven sites (automated test in the repository).' : 'an analytic ephemeris (Meeus series; IAU 2009 lunar orientation), used here because the requested dates fall outside the DE440 table (2026–2035). Against JPL Horizons it differs by up to 0.26° in azimuth and 0.008° in elevation.'} At each 30-minute step the Sun's 0.2666° disc is tested against the terrain horizon; a step counts as lit when at least half of the disc is visible. Only direct sunlight is modelled: no scattered light, no atmospheric or regolith effects, no spacecraft shadowing.</p>
       <h3>Earth visibility</h3>
@@ -160,7 +165,10 @@ function Report({ c, print }: { c: ReportContext; print: boolean }) {
       <table>
         <thead><tr><th>Layer</th><th>Source</th><th>Resolution</th><th>Used for</th></tr></thead>
         <tbody>
-          <tr><td>Slope and slope error</td><td>NASA PGDA, LOLA slope products (LDSM, 60°S–pole)</td><td>10–60 m native; 100–480 m hazard cells</td><td>Landing and EVA terrain</td></tr>
+          <tr><td>Landing slope, roughness</td><td>NASA PGDA, LOLA plane-fit slope and roughness, 100 m baseline (LDRM SLP_100M, ROUGH_100M)</td><td>50 m pixels; 100–200 m cells, 80°S–pole</td><td>Landing verdict, roughness</td></tr>
+          <tr><td>Elevation, PSR map</td><td>NASA PGDA, LOLA LDEM and LPSR</td><td>20 m pixels, 80°S–pole</td><td>Elevation, relief, cold-trap access</td></tr>
+          <tr><td>Temperature, ice stability</td><td>LRO Diviner polar products (Williams et al. 2019; Schorghofer and Williams 2020), UCLA</td><td>240 m bins, 80°S–pole</td><td>Surface temperature, thermal cold traps</td></tr>
+          <tr><td>Slope and slope error (cross-check, EVA)</td><td>NASA PGDA, LOLA slope products (LDSM, 60°S–pole)</td><td>10–60 m native; 100–480 m hazard cells</td><td>EVA terrain; landing slope outside 80°S</td></tr>
           <tr><td>Elevation for shadows</td><td>LOLA / SLDEM2015 via the NYXOS terrain pyramid</td><td>≈ {Math.round(a.demResolutionM)} m at this point (20–500 m by region)</td><td>Horizon, sunlight, Earth visibility</td></tr>
           <tr><td>Crater catalogue</td><td>IAU / USGS Gazetteer of Planetary Nomenclature</td><td>diameter ≥ 2 km</td><td>Context</td></tr>
           <tr><td>Sun / Earth position</td><td>{a.ephemeris === 'JPL DE440' ? 'JPL DE440 via SPICE (NAIF kernels moon_pa_de440, moon_de440 frame)' : 'Analytic ephemeris (outside DE440 table)'}</td><td>30 min steps</td><td>Sunlight, Earth visibility, windows</td></tr>
@@ -172,10 +180,10 @@ function Report({ c, print }: { c: ReportContext; print: boolean }) {
       <h2>7. Limitations</h2>
       <ul>
         <li>Boulders, small craters and surface texture are not assessed (no LROC-derived hazard map loaded). A site that passes here is not certified safe.</li>
-        <li>Lander-scale slope exists only between 60°S and the south pole. Elsewhere the verdict is Not evaluated, not guessed.</li>
+        <li>The 100 m slope, roughness, elevation, PSR and temperature layers exist only from 80°S to the pole; between 60°S and 80°S only the native-pixel slope map exists, and north of 60°S the verdict is Not evaluated, not guessed.</li>
         <li>Illumination is limited by terrain resolution; relief smaller than the cell size can cast shadows that are not modelled.</li>
-        <li>Slopes are measured at 10–60 m baselines, shorter than the 100 m (landing) and 2 km (EVA) baselines in NASA's requirement.</li>
-        <li>Thermal, hydrogen, UV and radar evidence is not included. Science is reported as evidence, never as a score.</li>
+        <li>The landing slope uses the NASA 100 m baseline; the EVA map still uses native-pixel slopes, not a 2 km baseline.</li>
+        <li>Hydrogen (LEND), UV and radar evidence is not included. Diviner temperatures describe the environment, not the presence of ice. Science is reported as evidence, never as a score.</li>
         <li>Stay length default ({a.stayDays} d) is an assumption and can be changed.</li>
       </ul>
       {a.gaps.length > 0 && <p><b>Gaps in this assessment:</b> {a.gaps.join(' ')}</p>}

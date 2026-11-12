@@ -1,0 +1,61 @@
+{
+ "schema": 1,
+ "frame": "south-polar stereographic, lat_ts=-90, lon_0=0, R=1737400 m; row 0 = +y, column 0 = -x",
+ "halfExtentM": 304005.54017120006,
+ "pixelM": 240.03595749798663,
+ "size": [
+  2533,
+  2533
+ ],
+ "orientation": {
+  "transpose": false,
+  "flipY": false,
+  "flipX": false,
+  "psrContrastK": 135.38
+ },
+ "sources": "https://luna1.diviner.ucla.edu/~jpierre/diviner/level4_polar/",
+ "layers": {
+  "Tmax": {
+   "lo": 41.0,
+   "hi": 328.0,
+   "step": 1.1299212598425197,
+   "nodata": 255,
+   "validFraction": 0.7852436273873383
+  },
+  "Tmean": {
+   "lo": 29.0,
+   "hi": 183.0,
+   "step": 0.6062992125984252,
+   "nodata": 255,
+   "validFraction": 0.7852436273873383
+  },
+  "zit": {
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 0.003937007874015748,
+   "nodata": 255,
+   "validFraction": 0.4844834602512528
+  },
+  "f110s": {
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 0.003937007874015748,
+   "nodata": 255,
+   "validFraction": 0.7860592332805857
+  },
+  "f110w": {
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 0.003937007874015748,
+   "nodata": 255,
+   "validFraction": 0.7860525313785391
+  },
+  "psr": {
+   "lo": 0.0,
+   "hi": 1.0,
+   "step": 0.003937007874015748,
+   "nodata": 255,
+   "validFraction": 1.0
+  }
+ }
+}
