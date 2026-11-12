@@ -1,18 +1,20 @@
-name: avgvis-sample
+name: zenodo-probe
 on:
   push:
     branches: [probe2]
 permissions:
-  contents: write
+  contents: read
 jobs:
   s:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
       - run: |
-          sudo apt-get install -y -qq aria2 >/dev/null; pip install -q rasterio numpy
-          curl -sSL -m 60 -A "Mozilla/5.0 NYXOS" https://pgda.gsfc.nasa.gov/products/69 | grep -aoE 'href="[^"]+\.(TIF|IMG|LBL|JP2)"' | sed 's/.*data\///' | head -80
-          python3 tools/sample_avgvis.py
-          git config user.name nyxos-data-bot; git config user.email bot@users.noreply.github.com
-          mkdir -p /tmp/o && cp out/avgvis_ref.csv /tmp/o/ && git checkout --orphan avgvis-ref && git rm -rf -q --cached . && rm -rf $(ls -A | grep -v '^\.git$') 2>/dev/null; cp /tmp/o/avgvis_ref.csv . && git add -f avgvis_ref.csv && git commit -q -m "AVGVISIB samples [skip ci]" && git push -f origin avgvis-ref
+          set +e
+          curl -sSL -m 60 https://zenodo.org/api/records/17084058 | python3 -c "
+          import sys,json
+          d=json.load(sys.stdin); m=d.get('metadata',{})
+          print('TITLE',m.get('title')); print('DATE',m.get('publication_date')); print('CREATORS',[c['name'] for c in m.get('creators',[])][:8])
+          import re; print('DESC',re.sub('<[^>]+>',' ',m.get('description',''))[:2500])
+          for f in d.get('files',[]): print('FILE',f['key'],f['size'],f['links'].get('self'))
+          print('REL',m.get('related_identifiers'))"
