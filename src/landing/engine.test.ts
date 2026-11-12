@@ -286,3 +286,24 @@ describe('link budget', () => {
     expect(dead.volumeMB).toBe(0)
   })
 })
+
+import { lpHydrogenAt, type LpHydrogenData } from './hydrogen'
+describe('Lunar Prospector regional hydrogen lookup', () => {
+  const hd: LpHydrogenData = {
+    source: 't', units: 'ppm',
+    low: [[-90, -89, -180, 180, 150], [-89, -87, -180, 0, 100], [-89, -87, 0, 180, 200], [-87, -85, -180, 180, 50]],
+    hd: { latMin: -90, step: 0.5, lonMin: -180, cols: 720, rows: 20, ppm: Array.from({ length: 14400 }, (_, i) => i % 720) },
+  }
+  it('finds the equal-area cell, the half-degree value and the percentile', () => {
+    const r = lpHydrogenAt(hd, -88, 45)!
+    expect(r.lowPpm).toBe(200)
+    expect(r.percentile).toBe(100)
+    expect(r.hdPpm).toBe(Math.floor((45 + 180) / 0.5))
+    expect(lpHydrogenAt(hd, -86, -10)!.percentile).toBe(25)
+    expect(r.lowCell.widthKm).toBeGreaterThan(0)
+  })
+  it('returns null outside the polar cap and wraps longitude', () => {
+    expect(lpHydrogenAt(hd, -60, 0)).toBeNull()
+    expect(lpHydrogenAt(hd, -88, 405)!.lowPpm).toBe(200)
+  })
+})

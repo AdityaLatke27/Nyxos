@@ -122,7 +122,7 @@ export async function shadowScan(
 }
 
 export const INSTRUMENTS = [
-  { id: 'lend', name: 'LRO LEND neutron flux', answers: 'Is hydrogen enhanced? (coarse, ~10 km footprint)' },
+  { id: 'lend', name: 'LRO LEND neutron flux (finer than Lunar Prospector)', answers: 'Is hydrogen enhanced? (coarse, ~10 km footprint)' },
   { id: 'lamp', name: 'LRO LAMP far-UV albedo', answers: 'Is there frost-like surface reflectance in shadow?' },
   { id: 'minirf', name: 'LRO Mini-RF radar (CPR)', answers: 'Is there a radar signature consistent with ice or just rough rock?' },
   { id: 'lroc', name: 'LROC NAC imagery', answers: 'Boulders, small craters and surface texture at ~1 m' },

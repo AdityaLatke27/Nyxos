@@ -102,7 +102,7 @@ function Report({ c, print }: { c: ReportContext; print: boolean }) {
           {a.science.reasons.map((r) => <li key={r}>{r}</li>)}
           {c.crater && <li>Inside {c.crater[0]} ({c.crater[3].toFixed(1)} km).</li>}
           {shadow && <li>{shadow.persistentPct.toFixed(0)}% of the 4 km neighbourhood has no direct sunlight in a model year (NYXOS scan).</li>}
-          <li>Hydrogen (LEND), UV and radar data not loaded.</li></ul></div>
+          <li>Regional hydrogen only (Lunar Prospector); LEND, UV and radar data not loaded.</li></ul></div>
       </div>
       <p className="small">NYXOS reports three separate verdicts and no combined score: a failed landing constraint cannot be offset by scientific interest. Statuses: Pass, Warning, Fail, Not evaluated (data missing or too coarse; never counted as a pass).</p>
 
@@ -215,7 +215,7 @@ function Report({ c, print }: { c: ReportContext; print: boolean }) {
         <li>The 100 m slope, roughness, elevation, PSR and temperature layers exist only from 80°S to the pole; between 60°S and 80°S only the native-pixel slope map exists, and north of 60°S the verdict is Not evaluated, not guessed.</li>
         <li>Illumination is limited by terrain resolution; relief smaller than the cell size can cast shadows that are not modelled.</li>
         <li>The landing slope uses the NASA 100 m baseline and the EVA slope the 1.6 km baseline (nearest published to 2 km); the reachable-area figure still uses native-pixel slopes.</li>
-        <li>Hydrogen (LEND), UV and radar evidence is not included. Diviner temperatures describe the environment, not the presence of ice. Science is reported as evidence, never as a score.</li>
+        <li>Hydrogen is regional context only (Lunar Prospector, tens of km footprint; LEND, UV and radar evidence are not included). Diviner temperatures describe the environment, not the presence of ice. Science is reported as evidence, never as a score.</li>
         <li>Stay length default ({a.stayDays} d) is an assumption and can be changed.</li>
       </ul>
       {a.gaps.length > 0 && <p><b>Gaps in this assessment:</b> {a.gaps.join(' ')}</p>}

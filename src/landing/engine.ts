@@ -7,6 +7,7 @@ import { siteFrame } from '../sim/terrain/cpuTerrain'
 import { greatCircleKm } from '../analysis/geo'
 import { HazardField, polarXY, type HazardCell } from './hazard'
 import type { LanderProfile } from './profile'
+import { lpHydrogenAt, type LpHydrogenData } from './hydrogen'
 import { LINK_SOURCE, linkResult, type LinkInputs } from './linkBudget'
 
 /**
@@ -355,6 +356,8 @@ export interface EvalInput {
   scanDays?: number
   /** optional radio link assumptions; adds an informational link-budget row */
   link?: LinkInputs
+  /** Lunar Prospector regional hydrogen maps (null when not loaded) */
+  hydrogen?: LpHydrogenData | null
 }
 
 export function evaluate(inp: EvalInput): Assessment {
@@ -646,10 +649,18 @@ export function evaluate(inp: EvalInput): Assessment {
       thRow.why = 'no area cold enough for stable surface ice within the traverse reach'
     }
     sciRows.push(thRow)
-    sciRows.push({
-      id: 'hydrogen', label: 'Hydrogen / neutron evidence (LEND)', status: 'NOT_EVALUATED', value: 'no dataset loaded',
-      limit: 'n/a', limitSource: 'LRO LEND epithermal-neutron maps (not loaded; no verified downloadable raster found)', tag: 'N/A',
-      basis: 'none', why: 'neutron data is not loaded, so hydrogen enrichment is not assessed; its absence says nothing about ice', gating: false,
+    const lph = inp.hydrogen ? lpHydrogenAt(inp.hydrogen, lat, lon) : null
+    sciRows.push(lph ? {
+      id: 'hydrogen', label: 'Hydrogen, regional context (Lunar Prospector)', status: 'INFO',
+      value: `${lph.lowPpm.toFixed(0)} ppm H in a ${Math.round(lph.lowCell.widthKm)} km cell${lph.hdPpm !== null ? `; ${lph.hdPpm.toFixed(0)} ppm in the 0.5° (about 15 km) map` : ''}; higher than ${lph.percentile.toFixed(0)}% of 60 km cells poleward of 80°S (range ${lph.capMinPpm.toFixed(0)}–${lph.capMaxPpm.toFixed(0)} ppm)`,
+      limit: 'No limit: context only', limitSource: 'NASA Lunar Prospector neutron spectrometer, Feldman et al. 2001 (JGR), PDS Geosciences Node reduced hydrogen maps', tag: 'MODEL',
+      basis: 'epithermal-neutron-derived hydrogen in the top ~1 m, 60 km equal-area bins (and 0.5° bins); footprint tens of km',
+      why: 'a regional hydrogen level, much coarser than a landing site; it cannot separate water ice from other hydrogen or show what lies at this site. Evidence, not proof of ice',
+      gating: false,
+    } : {
+      id: 'hydrogen', label: 'Hydrogen, regional context (Lunar Prospector)', status: 'NOT_EVALUATED', value: 'no dataset loaded',
+      limit: 'n/a', limitSource: 'NASA Lunar Prospector neutron spectrometer hydrogen maps (PDS)', tag: 'N/A',
+      basis: 'none', why: 'the hydrogen map is not loaded here, so hydrogen is not assessed; its absence says nothing about ice', gating: false,
     })
   } else {
     sciRows.push({
@@ -658,7 +669,7 @@ export function evaluate(inp: EvalInput): Assessment {
     })
   }
   rows.push(...sciRows)
-  gaps.push('Hydrogen (LEND) and any ice-detection evidence beyond cold-trap geometry and temperature are not assessed; thermal conditions favour ice but do not prove it.')
+  gaps.push('Hydrogen is only regional context (Lunar Prospector, tens of km); the finer LRO LEND map is not loaded. No ice-detection evidence beyond cold-trap geometry, temperature and regional hydrogen is assessed; thermal conditions favour ice but do not prove it.')
 
   // ---- operations: sunlight, Earth
   const coarse = demM > 500
