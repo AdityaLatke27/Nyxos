@@ -1,0 +1,32 @@
+name: build-eva-data
+on:
+  workflow_dispatch:
+  push:
+    branches: [data-eva]
+permissions:
+  contents: write
+jobs:
+  eva:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          sudo mkdir -p /mnt/work && sudo chown $USER /mnt/work
+          sudo apt-get install -y -qq aria2 >/dev/null
+          pip install -q rasterio numpy pillow
+      - run: python3 tools/build_eva_tiles.py out
+      - run: |
+          git config user.name nyxos-data-bot; git config user.email bot@users.noreply.github.com
+          mkdir -p /tmp/o/public/landing && cp -r out/* /tmp/o/public/landing/
+          git checkout --orphan landing-eva; git rm -rf -q --cached .; find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -r /tmp/o/public . ; git add -f public/landing; git commit -q -m "Landing EVA slope tiles [skip ci]"; git push -f origin landing-eva
+  crater:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - run: |
+          set +e
+          for u in https://astropedia.astrogeology.usgs.gov/download/Moon/Research/Craters/lunar_crater_database_robbins_2018/data/lunar_crater_database_robbins_2018.csv https://astropedia.astrogeology.usgs.gov/download/Moon/Research/Craters/lunar_crater_database_robbins_2018/lunar_crater_database_robbins_2018.csv https://pdsimage2.wr.usgs.gov/Individual_Investigations/moon_lro.kaguya_multi_craterdatabase_robbins_2018/data/lunar_crater_database_robbins_2018.csv https://pdsimage2.wr.usgs.gov/archive/moon_lro.kaguya_multi_craterdatabase_robbins_2018/data/lunar_crater_database_robbins_2018.csv; do
+            echo "#### $u"; curl -sSIL -m 90 -A "Mozilla/5.0 NYXOS" "$u" | grep -aiE "^HTTP|content-length|content-type"; done
