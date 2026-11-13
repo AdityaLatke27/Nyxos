@@ -9,6 +9,7 @@ import { HazardField, browserLoader, loadManifest, polarXY } from '../hazard'
 import { validationSentence } from '../validation'
 import { ROBUSTNESS_LABEL } from '../sensitivity'
 import { loadTerrainField, type TerrainField } from '../terrain'
+import { loadCraters, type CraterData } from '../craters'
 import { loadLpHydrogen, type LpHydrogenData } from '../hydrogen'
 import { evaluate, type Assessment } from '../engine'
 import { loadEphemerisTable } from '../../astro/ephemerisTable'
@@ -46,10 +47,12 @@ export default function LandingApp() {
   const [hazardNote, setHazardNote] = useState('Loading slope tiles…')
   const [lunar, setLunar] = useState<TerrainField | null>(null)
   const [hydrogen, setHydrogen] = useState<LpHydrogenData | null>(null)
+  const [craters, setCraters] = useState<CraterData | null>(null)
 
   useEffect(() => {
     loadSimAssets((l, t) => setBytes({ l, t })).then(setAssets).catch((e: Error) => setError(e.message))
     loadLpHydrogen().then(setHydrogen)
+    loadCraters().then(setCraters)
     loadTerrainField().then(setLunar)
     loadManifest().then((m) => {
       if (m) {
@@ -115,7 +118,7 @@ export default function LandingApp() {
       await loadEphemerisTable()
       await new Promise((r) => setTimeout(r, 20))
       if (id !== runId.current) return
-      const res = evaluate({ lat: site.lat, lon: site.lon, startMs: start, profile, terrain, hazard, lunar, link, hydrogen })
+      const res = evaluate({ lat: site.lat, lon: site.lon, startMs: start, profile, terrain, hazard, lunar, link, hydrogen, craters })
       if (id !== runId.current) return
       setA(res)
       setBusy(false)
@@ -123,7 +126,7 @@ export default function LandingApp() {
       const sc = await shadowScan(terrain, site.lat, site.lon, yearSunDirs(start))
       if (id === runId.current) setShadow(sc)
     })()
-  }, [terrain, assets, hazard, lunar, hydrogen, site, profile, start, near, link])
+  }, [terrain, assets, hazard, lunar, hydrogen, craters, site, profile, start, near, link])
 
   const pick = useCallback((lat: number, lon: number, name?: string) => setSite({ lat, lon, name: name ?? `Point ${fmtLat(lat)} ${fmtLon(lon)}` }), [])
 

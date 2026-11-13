@@ -7,6 +7,7 @@ import type { SimAssets } from '../../sim/data/types'
 import { searchCraters } from '../../analysis/craterLookup'
 import { HazardField, browserLoader, loadManifest, polarXY } from '../hazard'
 import { loadTerrainField, type TerrainField } from '../terrain'
+import { loadCraters, type CraterData } from '../craters'
 import { loadLpHydrogen, type LpHydrogenData } from '../hydrogen'
 import { evaluate, type Status } from '../engine'
 import { loadEphemerisTable } from '../../astro/ephemerisTable'
@@ -43,11 +44,13 @@ export default function CompareApp() {
   const [hazard, setHazard] = useState<HazardField | null>(null)
   const [lunar, setLunar] = useState<TerrainField | null>(null)
   const [hydrogen, setHydrogen] = useState<LpHydrogenData | null>(null)
+  const [craters, setCraters] = useState<CraterData | null>(null)
   const [ready, setReady] = useState({ hazard: false, lunar: false })
 
   useEffect(() => {
     loadSimAssets((l, t) => setBytes({ l, t })).then(setAssets).catch((e: Error) => setError(e.message))
     loadLpHydrogen().then(setHydrogen)
+    loadCraters().then(setCraters)
     loadTerrainField().then((f) => { setLunar(f); setReady((r) => ({ ...r, lunar: true })) })
     loadManifest().then((m) => {
       if (m) setHazard(new HazardField(m, browserLoader()))
@@ -102,7 +105,7 @@ export default function CompareApp() {
             if (lunar) await lunar.ensure(p.x, p.y, profile.coldTrapReachM.value + 600)
           }
           await new Promise((r) => setTimeout(r, 10))
-          const a = evaluate({ lat: entry.lat, lon: entry.lon, startMs: start, profile, terrain, hazard, lunar, link, hydrogen })
+          const a = evaluate({ lat: entry.lat, lon: entry.lon, startMs: start, profile, terrain, hazard, lunar, link, hydrogen, craters })
           out.push({ entry, a })
         } catch (e) {
           out.push({ entry, a: null, error: (e as Error).message })
@@ -114,7 +117,7 @@ export default function CompareApp() {
       if (id === runId.current) setProgress(null)
     }, 150)
     return () => clearTimeout(handle)
-  }, [terrain, assets, hazard, lunar, hydrogen, ready, picked, start, profile, link])
+  }, [terrain, assets, hazard, lunar, hydrogen, craters, ready, picked, start, profile, link])
 
   if (error) return <div className="ld-root"><NavRail active="compare" /><p className="ld-error">{error}</p></div>
   if (!assets) return <Loader stage="download" downloaded={bytes.l} total={bytes.t} bake={0} error={null} />

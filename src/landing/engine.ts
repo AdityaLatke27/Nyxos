@@ -7,6 +7,7 @@ import { siteFrame } from '../sim/terrain/cpuTerrain'
 import { greatCircleKm } from '../analysis/geo'
 import { HazardField, polarXY, type HazardCell } from './hazard'
 import type { LanderProfile } from './profile'
+import { craterContext, type CraterData } from './craters'
 import { lpHydrogenAt, type LpHydrogenData } from './hydrogen'
 import { LINK_SOURCE, linkResult, type LinkInputs } from './linkBudget'
 
@@ -358,6 +359,8 @@ export interface EvalInput {
   link?: LinkInputs
   /** Lunar Prospector regional hydrogen maps (null when not loaded) */
   hydrogen?: LpHydrogenData | null
+  /** Robbins crater catalogue, polar subset (null when not loaded) */
+  craters?: CraterData | null
 }
 
 export function evaluate(inp: EvalInput): Assessment {
@@ -574,8 +577,8 @@ export function evaluate(inp: EvalInput): Assessment {
   // ---- boulders: honest gap
   rows.push({
     id: 'boulders', label: 'Boulders and small craters', status: 'NOT_EVALUATED', value: 'no dataset loaded',
-    limit: 'hazard-free zone', limitSource: 'Requires LROC NAC boulder / small-crater maps (not loaded in this build)', tag: 'N/A',
-    basis: 'none', why: 'no boulder or small-crater map is loaded; a high-resolution hazard survey is still needed', gating: false,
+    limit: 'hazard-free zone', limitSource: 'Needs a polar LROC NAC boulder / small-crater map. The only open global boulder map found (Aussel et al. 2025) covers 60°S–60°N, so it does not reach the pole', tag: 'N/A',
+    basis: 'none', why: 'no open boulder or small-crater map covers the polar landing regions; a high-resolution hazard survey is still needed', gating: false,
   })
   gaps.push('Boulder and small-crater hazards are not assessed (no dataset loaded).')
 
@@ -649,6 +652,19 @@ export function evaluate(inp: EvalInput): Assessment {
       thRow.why = 'no area cold enough for stable surface ice within the traverse reach'
     }
     sciRows.push(thRow)
+    const cc = inp.craters ? craterContext(inp.craters, lat, lon) : null
+    sciRows.push(cc ? {
+      id: 'craterdensity', label: 'Large-crater density (Robbins catalogue)', status: 'INFO',
+      value: `${cc.count1} craters ≥ 1 km within ${cc.radiusKm} km (${cc.density1.toFixed(0)} per 1000 km², polar-cap average ${cc.capDensity1.toFixed(0)}); ${cc.count2} ≥ 2 km; nearest ≥ 1 km crater centre ${cc.nearestKm.toFixed(1)} km away (${cc.nearestDiamKm.toFixed(1)} km across)${cc.insideDiamKm !== null ? `; the site lies inside a ${cc.insideDiamKm.toFixed(1)} km crater` : ''}`,
+      limit: 'No limit: context only', limitSource: 'Robbins (2019), Lunar Crater Database, USGS Astrogeology 2018-08-15 release', tag: 'MODEL',
+      basis: 'craters ≥ 1 km, catalogue approximately complete above about 1–2 km; distances in the polar-stereographic plane (under 1% distortion poleward of 80°S)',
+      why: 'describes where large craters are; the small craters and rocks that endanger a landing are not in this catalogue, so this row is not a hazard assessment',
+      gating: false,
+    } : {
+      id: 'craterdensity', label: 'Large-crater density (Robbins catalogue)', status: 'NOT_EVALUATED', value: 'no catalogue loaded',
+      limit: 'n/a', limitSource: 'Robbins (2019), Lunar Crater Database', tag: 'N/A', basis: 'none',
+      why: 'the crater catalogue is not loaded here; crater density is not assessed', gating: false,
+    })
     const lph = inp.hydrogen ? lpHydrogenAt(inp.hydrogen, lat, lon) : null
     sciRows.push(lph ? {
       id: 'hydrogen', label: 'Hydrogen, regional context (Lunar Prospector)', status: 'INFO',
