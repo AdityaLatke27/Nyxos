@@ -11,5 +11,5 @@ jobs:
     steps:
       - run: |
           set +e
-          B=https://pdsimage2.wr.usgs.gov/Individual_Investigations
-          for u in "$B/" "$B/moon_lro.kaguya_multi_craterdatabase_robbins_2018/" "$B/moon_lro.kaguya_multi_craterdatabase_robbins_2018/data/lunar_crater_database_robbins_2018.csv" "$B/moon_lro.kaguya_multi_craterdatabase_robbins_2018/data/lunar_crater_database_robbins_2018.tab" "$B/moon_lro.kaguya_multi_craterdatabase_robbins_2018/DATA/" "https://astrogeology.usgs.gov/search/map/moon_crater_database_v1_robbins" "http://astropedia.astrogeology.usgs.gov/download/Moon/Research/Craters/lunar_crater_database_robbins_2018.csv"; do curl -sSL -m 60 -o t.bin -w "$u -> HTTP %{http_code} %{size_download}\n" "$u"; sed 's/<[^>]*>/ /g' t.bin | tr -s ' \n' | grep -i "robbins\|crater\|csv\|tab\|Not Found" | head -6; done
+          curl -sSL -m 60 -o p.html https://astrogeology.usgs.gov/search/map/moon_crater_database_v1_robbins
+          echo "=== LINKS"; grep -oE 'https?://[^"'"'"' <>)]+' p.html | grep -iE "robbins|download|csv|zip|astropedia|pds|\.tab|gpkg|shp|geo" | sort -u | head -40
