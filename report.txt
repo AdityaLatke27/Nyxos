@@ -1,0 +1,49 @@
+file 96227201 b'PK\x03\x04\x14\x00\x00\x00'
+[('lunar_crater_database_robbins_2018_bundle/bundle_checksums.txt', 1313), ('lunar_crater_database_robbins_2018_bundle/bundle_checksums.xml', 2300), ('lunar_crater_database_robbins_2018_bundle/data/', 0), ('lunar_crater_database_robbins_2018_bundle/data/collection_data_inventory.csv', 94), ('lunar_crater_database_robbins_2018_bundle/data/collection_data_inventory.xml', 2506), ('lunar_crater_database_robbins_2018_bundle/data/lunar_crater_database_robbins_2018.csv', 238483500), ('lunar_crater_database_robbins_2018_bundle/data/lunar_crater_database_robbins_2018.xml', 12790), ('lunar_crater_database_robbins_2018_bundle/document/', 0), ('lunar_crater_database_robbins_2018_bundle/document/collection_document_inventory.csv', 106), ('lunar_crater_database_robbins_2018_bundle/document/collection_document_inventory.xml', 2519), ('lunar_crater_database_robbins_2018_bundle/document/lunar_crater_database_archive_description.pdf', 332790), ('lunar_crater_database_robbins_2018_bundle/document/lunar_crater_database_archive_description.xml', 1668), ('lunar_crater_database_robbins_2018_bundle/lunar_crater_database_bundle_xml.xml', 7247), ('lunar_crater_database_robbins_2018_bundle/lunar_crater_database_README.pdf', 59994), ('lunar_crater_database_robbins_2018_bundle/lunar_crater_database_README.xml', 1992), ('lunar_crater_database_robbins_2018_bundle/schema/', 0), ('lunar_crater_database_robbins_2018_bundle/schema/collection_xml_schema_inventory.tab', 60), ('lunar_crater_database_robbins_2018_bundle/schema/collection_xml_schema_inventory.xml', 8524), ('lunar_crater_database_robbins_2018_bundle/schema/PDS4_PDS_1B00.sch', 156851), ('lunar_crater_database_robbins_2018_bundle/schema/PDS4_PDS_1B00.xml', 2800)]
+['w/x/lunar_crater_database_robbins_2018_bundle/data/collection_data_inventory.csv', 'w/x/lunar_crater_database_robbins_2018_bundle/data/lunar_crater_database_robbins_2018.csv', 'w/x/lunar_crater_database_robbins_2018_bundle/document/collection_document_inventory.csv']
+using w/x/lunar_crater_database_robbins_2018_bundle/data/lunar_crater_database_robbins_2018.csv 238483500
+['CRATER_ID', 'LAT_CIRC_IMG', 'LON_CIRC_IMG', 'LAT_ELLI_IMG', 'LON_ELLI_IMG', 'DIAM_CIRC_IMG', 'DIAM_CIRC_SD_IMG', 'DIAM_ELLI_MAJOR_IMG', 'DIAM_ELLI_MINOR_IMG', 'DIAM_ELLI_ECCEN_IMG', 'DIAM_ELLI_ELLIP_IMG', 'DIAM_ELLI_ANGLE_IMG', 'LAT_ELLI_SD_IMG', 'LON_ELLI_SD_IMG', 'DIAM_ELLI_MAJOR_SD_IMG', 'DIAM_ELLI_MINOR_SD_IMG', 'DIAM_ELLI_ANGLE_SD_IMG', 'DIAM_ELLI_ECCEN_SD_IMG', 'DIAM_ELLI_ELLIP_SD_IMG', 'ARC_IMG', 'PTS_RIM_IMG']
+total 1296796 polar 14406
+lon range 0.00239049 359.945
+D>=1 km 14406
+D>=2 km 5129
+D>=5 km 858
+D>=10 km 201
+density D>=1 km per 1000 km^2 in 80-90S cap (area 289379 km^2): 49.8
+Ashbrook               named 157.7 km  robbins 157.7 km  offset 7.4 km
+Scott                  named 107.8 km  robbins 94.7 km  offset 8.4 km
+Amundsen               named 103.4 km  robbins 103.7 km  offset 8.8 km
+Cabeus                 named 100.6 km  robbins 97.7 km  offset 5.9 km
+Nobile                 named 79.3 km  robbins 77.0 km  offset 1.6 km
+Hedervari              named 74.1 km  robbins 73.4 km  offset 0.6 km
+Malapert               named 72.4 km  robbins 54.9 km  offset 15.4 km
+Idel son               named 59.8 km  robbins 57.2 km  offset 3.9 km
+Oberbeck               named 58.0 km  robbins 61.2 km  offset 1.6 km
+Nefed ev               named 52.9 km  robbins 49.5 km  offset 1.3 km
+Shoemaker              named 51.8 km  robbins 53.3 km  offset 2.4 km
+Haworth                named 51.4 km  robbins 54.8 km  offset 1.2 km
+Henson                 named 43.0 km  robbins 38.4 km  offset 1.4 km
+Faustini               named 42.5 km  robbins 44.2 km  offset 0.3 km
+Wiechert               named 40.8 km  robbins 41.4 km  offset 1.3 km
+Sverdrup               named 32.8 km  robbins 33.6 km  offset 0.5 km
+de Gerlache            named 32.7 km  robbins 33.1 km  offset 0.8 km
+Slater                 named 25.1 km  robbins 26.6 km  offset 2.6 km
+Kocher                 named 24.0 km  robbins 23.5 km  offset 0.2 km
+Burbidge               named 21.0 km  robbins 20.3 km  offset 0.4 km
+Shackleton             named 20.9 km  robbins 20.8 km  offset 0.3 km
+Whitaker               named 20.0 km  robbins 20.4 km  offset 0.3 km
+Cartwright             named 17.0 km  robbins 13.9 km  offset 0.7 km
+Haynes                 named 17.0 km  robbins 19.0 km  offset 2.4 km
+Brill                  named 17.0 km  robbins 16.6 km  offset 0.4 km
+Stose                  named 16.7 km  robbins 15.8 km  offset 0.1 km
+Kuhn                   named 16.6 km  robbins 16.3 km  offset 0.3 km
+Svedberg               named 15.3 km  robbins 14.8 km  offset 0.2 km
+von Baeyer             named 13.5 km  robbins 13.9 km  offset 0.4 km
+Spudis                 named 13.0 km  robbins 13.1 km  offset 1.0 km
+Laveran                named 12.5 km  robbins 12.3 km  offset 0.4 km
+Ibn Bajja              named 12.0 km  robbins 12.4 km  offset 0.2 km
+Wapowski               named 11.4 km  robbins 11.2 km  offset 0.3 km
+Braude                 named 11.3 km  robbins 11.4 km  offset 0.3 km
+Floss                  named 9.0 km  robbins 8.7 km  offset 0.2 km
+Malinkin               named 8.3 km  robbins 8.3 km  offset 0.2 km
+matched 36 of 36 median robbins/D 0.993 min 0.76 max 1.12
