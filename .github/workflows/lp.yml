@@ -1,4 +1,4 @@
-name: lp-hydrogen
+name: crater-polar
 on:
   push:
     branches: [data-lp]
@@ -7,18 +7,18 @@ permissions:
 jobs:
   b:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - run: |
           set -e
           mkdir w
-          for f in hydrogenhd.txt hydrogenlow.txt; do curl -sSL -m 300 --retry 3 -o w/$f https://pds-geosciences.wustl.edu/missions/lunarp/reduced/$f; done
-          python3 tools/build_lp_hydrogen.py
+          curl -sSL -m 1500 --retry 3 -o w/c.csv "https://zenodo.org/api/records/13990480/files/Moon_Diamond_catalog_4.csv/content"
+          python3 tools/crater_polar_raw.py | tee w/report.txt
           git config user.name ci; git config user.email ci@x
-          git checkout --orphan landing-lp
+          git checkout --orphan landing-craters-raw
           git rm -rf . -q
-          cp w/lp_h.json .
-          git add lp_h.json
-          git commit -qm "LP hydrogen polar subset [skip ci]"
-          git push -f origin landing-lp
+          cp w/polar_raw.csv.gz w/report.txt .
+          git add polar_raw.csv.gz report.txt
+          git commit -qm "LU5M812TGT polar subset [skip ci]"
+          git push -f origin landing-craters-raw
