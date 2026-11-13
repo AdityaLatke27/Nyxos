@@ -7,17 +7,9 @@ permissions:
 jobs:
   s:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - run: |
           set +e
-          mkdir w && cd w
-          curl -sSL -m 60 https://zenodo.org/api/records/13990480 | python3 -c "import json,sys;d=json.load(sys.stdin);m=d['metadata'];import re;print(re.sub('<[^>]+>',' ',m.get('description','')));print(m.get('license'),m.get('publication_date'),m.get('version'));print(m.get('related_identifiers'));print(d.get('doi'))" > desc.txt; echo "=== DESC"; cat desc.txt | cut -c1-3000
-          curl -sSL -m 900 -o c.csv "https://zenodo.org/api/records/13990480/files/Moon_Diamond_catalog_4.csv/content"; ls -l c.csv
-          echo "=== HEAD"; head -4 c.csv | cut -c1-600; wc -l c.csv
-          python3 - <<'PY'
-          import csv,sys
-          r=csv.reader(open('c.csv'));h=next(r);print(h)
-          idx={k:i for i,k in enumerate(h)}
-          print(idx)
-          PY
+          B=https://pdsimage2.wr.usgs.gov/Individual_Investigations
+          for u in "$B/" "$B/moon_lro.kaguya_multi_craterdatabase_robbins_2018/" "$B/moon_lro.kaguya_multi_craterdatabase_robbins_2018/data/lunar_crater_database_robbins_2018.csv" "$B/moon_lro.kaguya_multi_craterdatabase_robbins_2018/data/lunar_crater_database_robbins_2018.tab" "$B/moon_lro.kaguya_multi_craterdatabase_robbins_2018/DATA/" "https://astrogeology.usgs.gov/search/map/moon_crater_database_v1_robbins" "http://astropedia.astrogeology.usgs.gov/download/Moon/Research/Craters/lunar_crater_database_robbins_2018.csv"; do curl -sSL -m 60 -o t.bin -w "$u -> HTTP %{http_code} %{size_download}\n" "$u"; sed 's/<[^>]*>/ /g' t.bin | tr -s ' \n' | grep -i "robbins\|crater\|csv\|tab\|Not Found" | head -6; done
