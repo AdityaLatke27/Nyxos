@@ -1,4 +1,4 @@
-name: crater-polar
+name: robbins-polar
 on:
   push:
     branches: [data-lp]
@@ -13,12 +13,13 @@ jobs:
       - run: |
           set -e
           mkdir w
-          curl -sSL -m 1500 --retry 3 -o w/c.csv "https://zenodo.org/api/records/13990480/files/Moon_Diamond_catalog_4.csv/content"
-          python3 tools/crater_polar_raw.py | tee w/report.txt
+          curl -sSL -m 1500 --retry 3 -o w/robbins.dl "https://astrogeology.usgs.gov/ckan/dataset/f89f5478-b69a-486c-b9b5-30d7b0c5ad2b/resource/c4f25cc2-4f8a-4207-a845-5e176da3ac5a/download/lunar_crater_database_robbins_2018"
+          ls -l w
+          python3 tools/robbins_polar.py | tee w/report.txt
           git config user.name ci; git config user.email ci@x
-          git checkout --orphan landing-craters-raw
+          git checkout --orphan landing-robbins
           git rm -rf . -q
-          cp w/polar_raw.csv.gz w/report.txt .
-          git add polar_raw.csv.gz report.txt
-          git commit -qm "LU5M812TGT polar subset [skip ci]"
-          git push -f origin landing-craters-raw
+          cp w/robbins_polar.csv.gz w/report.txt .
+          git add robbins_polar.csv.gz report.txt
+          git commit -qm "Robbins polar subset [skip ci]"
+          git push -f origin landing-robbins
