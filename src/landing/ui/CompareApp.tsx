@@ -17,12 +17,13 @@ import LinkForm from './LinkForm'
 import { ROBUSTNESS_LABEL } from '../sensitivity'
 import { yieldToBrowser } from '../nearby'
 import { WUELLER_SITES } from '../candidateSites'
-import { compareCsv, rowDiffers, rowFor, rowList, verdictSummary, type CompareResult, type SiteEntry } from '../compare'
+import { accessRows, compareCsv, rowDiffers, rowFor, rowList, slipTimes, verdictSummary, type CompareResult, type SiteEntry } from '../compare'
 import { downloadText } from '../report'
 import { STATUS_GLYPH, STATUS_LABEL, fmtLat, fmtLon, fmtUtc } from './format'
 import './landing.css'
 
 const MAX_SITES = 6
+const MAX_DATES = 6
 const nextMidnight = () => {
   const d = new Date()
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1)
@@ -65,6 +66,9 @@ export default function CompareApp() {
   const [link, setLink] = useState<LinkInputs>(DEFAULT_LINK)
   const [stay, setStay] = useState(NASA_HLS.stayDays.value)
   const [onlyDiff, setOnlyDiff] = useState(false)
+  const [mode, setMode] = useState<'sites' | 'dates'>('sites')
+  const [slips, setSlips] = useState<number[]>([0, 7, 14, 30])
+  const [slipText, setSlipText] = useState('')
   const [query, setQuery] = useState('')
   const [custom, setCustom] = useState({ lat: -89.5, lon: 0 })
   const [results, setResults] = useState<CompareResult[]>([])
@@ -82,17 +86,31 @@ export default function CompareApp() {
 
   const profile = useMemo(() => ({ ...NASA_HLS, stayDays: { ...NASA_HLS.stayDays, value: stay, source: stay === NASA_HLS.stayDays.value ? NASA_HLS.stayDays.source : 'User-defined in NYXOS' } }), [stay])
 
+  // What to analyse: several sites at one landing time, or one site (the first in the list) at several landing times.
+  const jobs = useMemo(() => {
+    if (mode === 'dates') {
+      const site = picked[0]
+      if (!site) return []
+      return slipTimes(start, slips).slice(0, MAX_DATES).map((t) => ({
+        entry: { ...site, id: `${site.id}@${t.slipDays}`, name: `${t.slipDays === 0 ? 'Base' : `+${t.slipDays} d`} (${new Date(t.startMs).toISOString().slice(0, 10)})` },
+        startMs: t.startMs,
+        slipDays: t.slipDays as number | undefined,
+      }))
+    }
+    return picked.map((entry) => ({ entry, startMs: start, slipDays: undefined as number | undefined }))
+  }, [mode, picked, start, slips])
+
   useEffect(() => {
-    if (!terrain || !assets || !ready.hazard || !ready.lunar || picked.length === 0) {
-      if (picked.length === 0) setResults([])
+    if (!terrain || !assets || !ready.hazard || !ready.lunar || jobs.length === 0) {
+      if (jobs.length === 0) setResults([])
       return
     }
     const id = ++runId.current
     const handle = setTimeout(async () => {
       await loadEphemerisTable()
       const out: CompareResult[] = []
-      setProgress({ done: 0, total: picked.length })
-      for (const entry of picked) {
+      setProgress({ done: 0, total: jobs.length })
+      for (const { entry, startMs, slipDays } of jobs) {
         if (id !== runId.current) return
         try {
           terrain.setSite(null)
@@ -107,19 +125,19 @@ export default function CompareApp() {
           }
           await yieldToBrowser()
           if (id !== runId.current) return
-          const a = evaluate({ lat: entry.lat, lon: entry.lon, startMs: start, profile, terrain, hazard, lunar, link, hydrogen, craters })
-          out.push({ entry, a })
+          const a = evaluate({ lat: entry.lat, lon: entry.lon, startMs, profile, terrain, hazard, lunar, link, hydrogen, craters })
+          out.push({ entry, a, startMs, slipDays })
         } catch (e) {
-          out.push({ entry, a: null, error: (e as Error).message })
+          out.push({ entry, a: null, error: (e as Error).message, startMs, slipDays })
         }
         if (id !== runId.current) return
-        setProgress({ done: out.length, total: picked.length })
+        setProgress({ done: out.length, total: jobs.length })
         setResults([...out])
       }
       if (id === runId.current) setProgress(null)
     }, 300)
     return () => clearTimeout(handle)
-  }, [terrain, assets, hazard, lunar, hydrogen, craters, ready, picked, start, profile, link])
+  }, [terrain, assets, hazard, lunar, hydrogen, craters, ready, jobs, profile, link])
 
   if (error) return <div className="ld-root"><NavRail active="compare" /><p className="ld-error">{error}</p></div>
   if (!assets) return <Loader stage="download" downloaded={bytes.l} total={bytes.t} bake={0} error={null} />
@@ -132,7 +150,7 @@ export default function CompareApp() {
   const wuellerRegions = [...new Set(WUELLER_SITES.map((s) => s[1]))]
   const rows = rowList(results)
   const shown = onlyDiff ? rows.filter((r) => rowDiffers(results, r.id)) : rows
-  const done = results.length === picked.length && !progress
+  const done = results.length === jobs.length && !progress
 
   return (
     <div className="ld-root">
@@ -141,10 +159,16 @@ export default function CompareApp() {
         <header className="ld-head">
           <div>
             <h1>Site comparison</h1>
-            <p>Put 2 to {MAX_SITES} candidate sites side by side with the same lander, landing time and stay. Safety, Operations and Science stay separate; there is no combined score and no ranking.</p>
+            <p>{mode === 'sites'
+              ? <>Put 2 to {MAX_SITES} candidate sites side by side with the same lander, landing time and stay.</>
+              : <>Take one site and see what happens if the landing slips: up to {MAX_DATES} landing times with the same lander and stay.</>} Safety, Operations and Science stay separate; there is no combined score and no ranking.</p>
+            <div className="cmp-mode" role="group" aria-label="What to compare">
+              <button className={mode === 'sites' ? 'on' : ''} aria-pressed={mode === 'sites'} onClick={() => setMode('sites')}>Compare sites</button>
+              <button className={mode === 'dates' ? 'on' : ''} aria-pressed={mode === 'dates'} onClick={() => setMode('dates')}>Compare landing dates</button>
+            </div>
           </div>
           <div className="ld-actions">
-            <button disabled={!done || results.length < 1} onClick={() => downloadText('nyxos-site-comparison.csv', compareCsv(results, { profile: profile.name, startIso: new Date(start).toISOString(), stayDays: stay }), 'text/csv')}>Download CSV</button>
+            <button disabled={!done || results.length < 1} onClick={() => downloadText(mode === 'dates' ? 'nyxos-date-comparison.csv' : 'nyxos-site-comparison.csv', compareCsv(results, { profile: profile.name, startIso: new Date(start).toISOString(), stayDays: stay }), 'text/csv')}>Download CSV</button>
           </div>
         </header>
 
@@ -159,6 +183,19 @@ export default function CompareApp() {
               <label className="cmp-add">Landing time (UTC)<input type="datetime-local" value={toInput(start)} onChange={(e) => { const v = Date.parse(e.target.value + 'Z'); if (!Number.isNaN(v)) setStart(v) }} /></label>
               <label className="cmp-add">Stay (days)<input type="number" min={1} max={30} step={0.5} value={stay} onChange={(e) => setStay(Math.max(1, Math.min(30, +e.target.value || 1)))} /></label>
             </div>
+            {mode === 'dates' && (
+              <div className="cmp-slips">
+                <h3>Landing slips ({Math.min(slipTimes(start, slips).length, MAX_DATES)} of {MAX_DATES} dates)</h3>
+                <ul className="cmp-chips">
+                  {slipTimes(start, slips).map((t) => <li key={t.slipDays}>{t.slipDays === 0 ? 'Planned date' : `+${t.slipDays} d`}{t.slipDays !== 0 && <button aria-label={`Remove slip of ${t.slipDays} days`} onClick={() => setSlips((x) => x.filter((d) => d !== t.slipDays))}>×</button>}</li>)}
+                </ul>
+                <div className="ld-two">
+                  <label className="cmp-add">Add a slip (days later)<input type="number" min={0} max={365} step={1} value={slipText} placeholder="e.g. 10" onChange={(e) => setSlipText(e.target.value)} /></label>
+                  <button disabled={slipText === '' || !(+slipText > 0) || slipTimes(start, slips).length >= MAX_DATES} onClick={() => { setSlips((x) => [...x, +slipText]); setSlipText('') }}>Add this slip</button>
+                </div>
+                <p className="ld-hint">{picked[0] ? `Site: ${picked[0].name} (the first site in the list). ` : 'Add a site first. '}The landing time above is the planned date; each slip moves it later by whole or part days.</p>
+              </div>
+            )}
             <LinkForm value={link} onChange={setLink} />
             <p className="ld-hint">Lander: {NASA_HLS.name}. Stay default is an assumption for Artemis III and can be changed.</p>
           </div>
@@ -187,7 +224,7 @@ export default function CompareApp() {
           </div>
         </section>
 
-        {picked.length > 0 && progress && <p className="cmp-prog" role="status">Analysing site {Math.min(progress.done + 1, progress.total)} of {progress.total}: terrain, sunlight and Earth visibility…</p>}
+        {jobs.length > 0 && progress && <p className="cmp-prog" role="status">Analysing {mode === 'dates' ? 'date' : 'site'} {Math.min(progress.done + 1, progress.total)} of {progress.total}: terrain, sunlight and Earth visibility…</p>}
         {picked.length > 0 && !ready.lunar && <p className="cmp-prog">Loading terrain tiles…</p>}
 
         {results.length > 0 && (
@@ -199,8 +236,8 @@ export default function CompareApp() {
               <table className="cmp-table">
                 <thead>
                   <tr>
-                    <th scope="col">{fmtUtc(start)} · {stay} d</th>
-                    {results.map((r) => <th scope="col" key={r.entry.id}>{r.entry.name}<small>{fmtLat(r.entry.lat)}, {fmtLon(r.entry.lon)}{r.a ? ` · ${r.a.site.heightM.toFixed(0)} m · terrain ≈ ${Math.round(r.a.demResolutionM)} m` : ''}</small></th>)}
+                    <th scope="col">{mode === 'dates' ? `${picked[0]?.name ?? ''} · ${stay} d` : `${fmtUtc(start)} · ${stay} d`}</th>
+                    {results.map((r) => <th scope="col" key={r.entry.id}>{r.entry.name}<small>{mode === 'dates' && r.startMs !== undefined ? `Landing ${fmtUtc(r.startMs)}` : `${fmtLat(r.entry.lat)}, ${fmtLon(r.entry.lon)}${r.a ? ` · ${r.a.site.heightM.toFixed(0)} m · terrain ≈ ${Math.round(r.a.demResolutionM)} m` : ''}`}</small></th>)}
                   </tr>
                 </thead>
                 <tbody>
@@ -209,6 +246,13 @@ export default function CompareApp() {
                     <tr key={k} className={new Set(results.map((r) => r.a?.[k].status)).size > 1 ? 'diff' : ''}>
                       <th scope="row">{l}<i>{qn}</i></th>
                       {results.map((r) => <td key={r.entry.id} className="cmp-cell">{r.a ? <><Chip s={r.a[k].status} /><span className="val">{r.a[k].reasons[0] ?? ''}</span></> : <span className="val">{r.error ?? 'Not analysed'}</span>}</td>)}
+                    </tr>
+                  ))}
+                  <tr className="sect"><th colSpan={results.length + 1} scope="colgroup">Sunlight and Earth over the stay</th></tr>
+                  {accessRows(results).map((r) => (
+                    <tr key={r.label} className={new Set(r.cells).size > 1 ? 'diff' : ''}>
+                      <th scope="row">{r.label}<i>{r.hint}</i></th>
+                      {r.cells.map((c, i) => <td key={results[i].entry.id} className="cmp-cell"><span className="val num">{c}</span></td>)}
                     </tr>
                   ))}
                   <tr className="sect"><th colSpan={results.length + 1} scope="colgroup">

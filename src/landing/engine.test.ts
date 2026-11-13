@@ -239,7 +239,7 @@ describe('exact sunrise and sunset times', () => {
   })
 })
 
-import { compareCsv, rowDiffers, rowList, verdictSummary, type CompareResult } from './compare'
+import { accessRows, accessSummary, compareCsv, rowDiffers, rowList, slipTimes, verdictSummary, type CompareResult } from './compare'
 describe('site comparison helpers', () => {
   const mk = (name: string, st: 'PASS' | 'FAIL'): CompareResult => ({
     entry: { id: name, name, lat: -89, lon: 0 },
@@ -247,6 +247,8 @@ describe('site comparison helpers', () => {
       rows: [{ id: 'slope', label: 'Landing slope', status: st, value: '5°', limit: '', limitSource: '', tag: 'NASA' as never, basis: '', why: '', gating: true }],
       safety: { status: st, reasons: [] }, operations: { status: 'PASS', reasons: [] }, science: { status: 'INFO' as never, reasons: [] },
       sensitivity: { level: 'ROBUST' } as never, windows: { litAndEarth: [], litOnly: [] },
+      stayDays: 0.5, timeline: { stepMs: 1800000, n: 3, sunFrac: new Float32Array(3), earthFrac: new Float32Array(3) },
+      stats: { litPct: 0, earthPct: 0, bothPct: 0, longestDarkH: 0, longestEarthOutH: 0, darkClipped: false },
     } as never,
   })
   const rs = [mk('A', 'PASS'), mk('B', 'FAIL')]
@@ -264,6 +266,39 @@ describe('site comparison helpers', () => {
   it('exports csv with one column per site', () => {
     const c = compareCsv(rs, { profile: 'p', startIso: 't', stayDays: 6.5 })
     expect(c.split('\n').find((l) => l.startsWith('"Safety verdict"'))).toBe('"Safety verdict","PASS","FAIL"')
+  })
+})
+
+describe('access summary and date scenarios', () => {
+  // 10 samples of 30 min: sun lit = 1 1 0 0 0 0 1 1 1 1, earth visible = 1 0 0 0 1 1 1 1 0 0
+  const sun = [1, 1, 0, 0, 0, 0, 1, 1, 1, 1], ear = [1, 0, 0, 0, 1, 1, 1, 1, 0, 0]
+  const a = {
+    stayDays: 9.5 / 48,
+    timeline: { stepMs: 1800000, n: 10, sunFrac: Float32Array.from(sun), earthFrac: Float32Array.from(ear) },
+    stats: { litPct: 60, earthPct: 50, bothPct: 30, longestDarkH: 2, longestEarthOutH: 1.5, darkClipped: false },
+  } as never
+  it('finds the longest run with neither Sun nor Earth from the samples', () => {
+    const x = accessSummary(a)
+    expect(x.longestNeitherH).toBeCloseTo(1, 6) // samples 2 and 3 only: 2 x 30 min
+    expect(x.neitherClipped).toBe(false)
+    expect(x.litPct).toBe(60)
+  })
+  it('flags a run that touches the end of the stay', () => {
+    const b = { ...(a as object), timeline: { stepMs: 1800000, n: 4, sunFrac: Float32Array.from([1, 0, 0, 0]), earthFrac: Float32Array.from([1, 0, 0, 0]) }, stayDays: 3.5 / 48 } as never
+    const x = accessSummary(b)
+    expect(x.longestNeitherH).toBeCloseTo(1.5, 6)
+    expect(x.neitherClipped).toBe(true)
+  })
+  it('builds one row per measure with one cell per column', () => {
+    const rs = [{ entry: { id: 'a', name: 'a', lat: 0, lon: 0 }, a }, { entry: { id: 'b', name: 'b', lat: 0, lon: 0 }, a: null }] as CompareResult[]
+    const rows = accessRows(rs)
+    expect(rows).toHaveLength(6)
+    expect(rows[0].cells).toEqual(['60.0%', '–'])
+  })
+  it('slips: always includes the planned date first, drops duplicates and invalid values', () => {
+    const t = slipTimes(1000, [7, 7, -3, NaN, 400, 14])
+    expect(t.map((x) => x.slipDays)).toEqual([0, 7, 14])
+    expect(t[1].startMs).toBe(1000 + 7 * 86400000)
   })
 })
 

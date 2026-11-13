@@ -15,6 +15,7 @@ import { evaluate, type Assessment } from '../engine'
 import { loadEphemerisTable } from '../../astro/ephemerisTable'
 import { NASA_HLS, customProfile, type LanderProfile } from '../profile'
 import { INSTRUMENTS, nearbyFeatures, nearbyMissions, shadowScan, yearSunDirs, type ShadowScan } from '../nearby'
+import { accessSummary, fmtSpan } from '../compare'
 import { buildReport, downloadText, reportCsv, type ReportContext } from '../report'
 import { DEFAULT_LINK, type LinkInputs } from '../linkBudget'
 import LinkForm from './LinkForm'
@@ -36,6 +37,22 @@ function Chip({ s }: { s: keyof typeof STATUS_LABEL }) {
       <b aria-hidden>{STATUS_GLYPH[s]}</b>
       {STATUS_LABEL[s]}
     </span>
+  )
+}
+
+function AccessStrip({ a }: { a: Assessment }) {
+  const x = accessSummary(a)
+  const items: [string, string, string][] = [
+    ['Sunlit', `${x.litPct.toFixed(0)}%`, 'of the stay'],
+    ['Longest without sunlight', `${fmtSpan(x.longestDarkH)}${x.darkClipped && x.longestDarkH > 0 ? '+' : ''}`, 'sizes the battery'],
+    ['Earth in view', `${x.earthPct.toFixed(0)}%`, 'of the stay, direct line of sight'],
+    ['Longest without Earth', fmtSpan(x.longestEarthOutH), 'longest communication gap'],
+    ['Neither Sun nor Earth', fmtSpan(x.longestNeitherH) + (x.neitherClipped && x.longestNeitherH > 0 ? '+' : ''), 'longest, 30 min resolution'],
+  ]
+  return (
+    <dl className="ld-access" aria-label="Sunlight and Earth access over the stay">
+      {items.map(([k, v, h]) => <div key={k}><dt>{k}</dt><dd>{v}</dd><small>{h}</small></div>)}
+    </dl>
   )
 }
 
@@ -270,6 +287,7 @@ export default function LandingApp() {
                 <p>{fmtLat(a.site.lat)}, {fmtLon(a.site.lon)} · surface height {a.site.heightM.toFixed(0)} m · {a.profile.name} · {fmtUtc(a.startMs)} for {a.stayDays} d</p>
               </div>
               <p className={`ld-headline lv-${a.headline.level}`}>{a.headline.text}</p>
+              <AccessStrip a={a} />
               <div className="ld-cards">
                 <article className="ld-card">
                   <h3>Safety <Chip s={a.safety.status} /></h3>
