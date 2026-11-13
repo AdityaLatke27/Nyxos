@@ -15,6 +15,7 @@ import { NASA_HLS } from '../profile'
 import { DEFAULT_LINK, type LinkInputs } from '../linkBudget'
 import LinkForm from './LinkForm'
 import { ROBUSTNESS_LABEL } from '../sensitivity'
+import { yieldToBrowser } from '../nearby'
 import { WUELLER_SITES } from '../candidateSites'
 import { compareCsv, rowDiffers, rowFor, rowList, verdictSummary, type CompareResult, type SiteEntry } from '../compare'
 import { downloadText } from '../report'
@@ -104,7 +105,8 @@ export default function CompareApp() {
             if (hazard) await hazard.ensure(p.x, p.y, 3500)
             if (lunar) await lunar.ensure(p.x, p.y, profile.coldTrapReachM.value + 600)
           }
-          await new Promise((r) => setTimeout(r, 10))
+          await yieldToBrowser()
+          if (id !== runId.current) return
           const a = evaluate({ lat: entry.lat, lon: entry.lon, startMs: start, profile, terrain, hazard, lunar, link, hydrogen, craters })
           out.push({ entry, a })
         } catch (e) {
@@ -115,7 +117,7 @@ export default function CompareApp() {
         setResults([...out])
       }
       if (id === runId.current) setProgress(null)
-    }, 150)
+    }, 300)
     return () => clearTimeout(handle)
   }, [terrain, assets, hazard, lunar, hydrogen, craters, ready, picked, start, profile, link])
 

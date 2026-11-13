@@ -86,19 +86,26 @@ export default function LandingApp() {
   const [busy, setBusy] = useState(false)
   const [shadow, setShadow] = useState<ShadowScan | 'running' | null>(null)
   const runId = useRef(0)
+  const setupId = useRef(0)
+  const scanId = useRef(0)
 
+  const coldReach = profile.coldTrapReachM.value
   const near = useMemo(() => {
     if (!assets) return null
     const hit = assets.sites.find((s) => s.near && Math.abs(s.lat - site.lat) < 0.5 && Math.hypot((s.lat - site.lat) * 30.3, (s.lon - site.lon) * 30.3 * Math.cos((site.lat * Math.PI) / 180)) < 12)
     return hit ?? null
   }, [assets, site])
 
+  // 1. Terrain for the chosen site: runs only when the site (or the layers) change, never while typing in the mission fields.
+  const siteKey = `${site.lat},${site.lon},${near?.id ?? ''}`
+  const [readyKey, setReadyKey] = useState('')
   useEffect(() => {
     if (!terrain || !assets) return
-    const id = ++runId.current
+    const id = ++setupId.current
+    setReadyKey('')
     setBusy(true)
     setShadow(null)
-    ;(async () => {
+    const timer = setTimeout(async () => {
       terrain.setSite(null)
       if (near) {
         try {
@@ -107,26 +114,53 @@ export default function LandingApp() {
           /* fall back to the global pyramid */
         }
       }
+      if (id !== setupId.current) return
       if (hazard && site.lat < -55) {
         const p = polarXY(site.lat, site.lon)
         await hazard.ensure(p.x, p.y, 3500)
       }
       if (lunar && site.lat < -55) {
         const p = polarXY(site.lat, site.lon)
-        await lunar.ensure(p.x, p.y, profile.coldTrapReachM.value + 600)
+        await lunar.ensure(p.x, p.y, coldReach + 600)
       }
       await loadEphemerisTable()
-      await new Promise((r) => setTimeout(r, 20))
+      if (id !== setupId.current) return
+      setReadyKey(siteKey)
+    }, 120)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [terrain, assets, hazard, lunar, siteKey, coldReach])
+
+  // 2. The assessment: cheap once the site's horizon and year timeline are cached, so editing the stay, lander, link or time is quick.
+  useEffect(() => {
+    if (!terrain || readyKey !== siteKey) return
+    const id = ++runId.current
+    const timer = setTimeout(() => {
       if (id !== runId.current) return
       const res = evaluate({ lat: site.lat, lon: site.lon, startMs: start, profile, terrain, hazard, lunar, link, hydrogen, craters })
-      if (id !== runId.current) return
       setA(res)
       setBusy(false)
+    }, 150)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [terrain, readyKey, siteKey, hazard, lunar, hydrogen, craters, site, profile, start, link])
+
+  // 3. Persistent-shadow scan: depends only on the site and the start time, and stops as soon as either changes.
+  useEffect(() => {
+    if (!terrain || readyKey !== siteKey) return
+    const id = ++scanId.current
+    const timer = setTimeout(async () => {
+      if (id !== scanId.current) return
       setShadow('running')
-      const sc = await shadowScan(terrain, site.lat, site.lon, yearSunDirs(start))
-      if (id === runId.current) setShadow(sc)
-    })()
-  }, [terrain, assets, hazard, lunar, hydrogen, craters, site, profile, start, near, link])
+      const sc = await shadowScan(terrain, site.lat, site.lon, yearSunDirs(start), 4, 9, undefined, () => id !== scanId.current)
+      if (sc && id === scanId.current) setShadow(sc)
+    }, 400)
+    return () => {
+      clearTimeout(timer)
+      scanId.current++
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [terrain, readyKey, siteKey, site.lat, site.lon, start])
 
   const pick = useCallback((lat: number, lon: number, name?: string) => setSite({ lat, lon, name: name ?? `Point ${fmtLat(lat)} ${fmtLon(lon)}` }), [])
 

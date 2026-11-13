@@ -97,6 +97,17 @@ export class CpuTerrain {
     }))
   }
 
+  private static ids = new WeakMap<object, number>()
+  private static nextId = 1
+  /** Identifies which terrain data is active (global pyramid, or a particular site patch), so results can be reused safely. */
+  cacheKey(): string {
+    const s = this.site
+    if (!s) return 'g'
+    let id = CpuTerrain.ids.get(s)
+    if (id === undefined) { id = CpuTerrain.nextId++; CpuTerrain.ids.set(s, id) }
+    return `s${id}`
+  }
+
   setSite(site: SiteTerrain | null) {
     this.site = site
     this.siteFrame = site ? siteFrame(site.site.lat, site.site.lon) : null

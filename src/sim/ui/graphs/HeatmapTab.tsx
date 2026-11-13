@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { interpolateGreatCircle, dirFromLatLon, latLonFromDir, type LatLon } from '../../../analysis/geo'
 import type { Feature } from '../../data/types'
 import { fmtLat, fmtLon, fmtUtc } from '../../state/frame'
@@ -22,14 +22,15 @@ interface Props {
 const LINE_ROWS = 12
 
 /** dark navy (shadow) to warm white (full sunlight) */
+const STOPS = [[16, 22, 52], [120, 60, 110], [236, 120, 70], [255, 226, 120]]
 function shade(p: number) {
   const t = Math.max(0, Math.min(1, p / 100))
-  const stops = [[16, 22, 52], [120, 60, 110], [236, 120, 70], [255, 226, 120]]
-  const x = t * (stops.length - 1)
-  const i = Math.min(stops.length - 2, Math.floor(x))
+  const x = t * (STOPS.length - 1)
+  const i = Math.min(STOPS.length - 2, Math.floor(x))
   const f = x - i
-  const c = stops[i].map((v, k) => Math.round(v + (stops[i + 1][k] - v) * f))
-  return `rgb(${c[0]},${c[1]},${c[2]})`
+  const a = STOPS[i]
+  const b = STOPS[i + 1]
+  return `rgb(${Math.round(a[0] + (b[0] - a[0]) * f)},${Math.round(a[1] + (b[1] - a[1]) * f)},${Math.round(a[2] + (b[2] - a[2]) * f)})`
 }
 
 /** Graph 4: when each place is lit, across 30 days — region zones, pinned points, or a line of points. */
@@ -84,10 +85,29 @@ export default function HeatmapTab({ terrain, features, point, hasTerrain }: Pro
   const PAD = { l: 250, r: 10, t: 6, b: 20 }
   const fracNow = Math.max(0, Math.min(1, offsetHours / WINDOW_HOURS))
 
+  // The coloured grid, row names and date ticks only change with the data or the canvas size; the live clock line and
+  // the hover box move constantly. The static layer is painted once into an off-screen bitmap and copied back 1:1.
+  const layer = useRef<{ rows: unknown; w: number; h: number; dpr: number; N: number; bmp: HTMLCanvasElement } | null>(null)
   const ref = useChartCanvas(
     (g, W, H) => {
       if (!rows.length) return
       const x = timeX(W, PAD.l, PAD.r)
+      const dpr = g.getTransform().a
+      const L = layer.current
+      if (L && L.rows === rows && L.w === W && L.h === H && L.dpr === dpr && L.N === N) {
+        g.save()
+        g.setTransform(1, 0, 0, 1, 0, 0)
+        g.drawImage(L.bmp, 0, 0)
+        g.restore()
+        drawOverlay(g, W, H, x)
+        return
+      }
+      const bmp = document.createElement('canvas')
+      bmp.width = Math.round(W * dpr)
+      bmp.height = Math.round(H * dpr)
+      const real = g
+      g = bmp.getContext('2d')!
+      g.setTransform(dpr, 0, 0, dpr, 0, 0)
       const rh = (H - PAD.t - PAD.b) / rows.length
       g.font = '10px "Space Grotesk", sans-serif'
       const colW = (W - PAD.l - PAD.r) / (N - 1)
@@ -109,18 +129,27 @@ export default function HeatmapTab({ terrain, features, point, hasTerrain }: Pro
         g.fillStyle = COLORS.text
         g.fillText(`${t.getUTCDate()}/${t.getUTCMonth() + 1}`, x(d / 30), H - 6)
       }
-      g.strokeStyle = '#fff'
-      g.beginPath()
-      g.moveTo(x(fracNow), PAD.t)
-      g.lineTo(x(fracNow), H - PAD.b)
-      g.stroke()
-      if (hover) {
-        g.strokeStyle = COLORS.cursor
-        g.strokeRect(PAD.l, PAD.t + hover.row * rh, W - PAD.l - PAD.r, rh - 1)
-      }
+      layer.current = { rows, w: W, h: H, dpr, N, bmp }
+      real.save()
+      real.setTransform(1, 0, 0, 1, 0, 0)
+      real.drawImage(bmp, 0, 0)
+      real.restore()
+      drawOverlay(real, W, H, x)
     },
     [rows, hover, fracNow, N],
   )
+  function drawOverlay(g: CanvasRenderingContext2D, W: number, H: number, x: (f: number) => number) {
+    const rh = (H - PAD.t - PAD.b) / rows.length
+    g.strokeStyle = '#fff'
+    g.beginPath()
+    g.moveTo(x(fracNow), PAD.t)
+    g.lineTo(x(fracNow), H - PAD.b)
+    g.stroke()
+    if (hover) {
+      g.strokeStyle = COLORS.cursor
+      g.strokeRect(PAD.l, PAD.t + hover.row * rh, W - PAD.l - PAD.r, rh - 1)
+    }
+  }
 
   const locate = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const r = e.currentTarget.getBoundingClientRect()
@@ -193,7 +222,7 @@ export default function HeatmapTab({ terrain, features, point, hasTerrain }: Pro
             }}
             onPointerMove={(e) => {
               const h = locate(e)
-              setHover(h)
+              setHover((prev) => (prev && prev.i === h.i && prev.row === h.row ? prev : h))
               if (drag) setSimTime(illum.track.startMs + h.i * illum.track.stepMs, startDay)
             }}
             onPointerUp={() => setDrag(false)}

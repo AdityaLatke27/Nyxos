@@ -62,6 +62,45 @@ function Post({ sunMesh, haze }: { sunMesh: THREE.Mesh | null; haze: boolean }) 
   )
 }
 
+const visWord = (v: number) => (v > 0.99 ? 'u' : v < 0.01 ? 'd' : String(Math.round(v * 100)))
+/** Everything the panel prints from a SiteNow, at the precision it prints it. */
+function shownKey(n: SiteNow) {
+  return [n.sky.sunElev.toFixed(2), n.sky.earthElev.toFixed(2), visWord(n.sunVisible), n.sunVisible >= 0.5, n.sunVisible >= 0.99, n.sunVisible <= 0.01, n.earthVisible >= 0.99, n.earthVisible <= 0.01, Math.round(n.earthVisible * 100), n.earthVisible >= 0.5, Math.round(n.sky.earthLit * 100), n.linkOpen, n.powerPct].join('|')
+}
+
+/** The live read-out in the stand view. It keeps its own clock so the 3D scene and the side panel are not re-rendered five times a second. */
+function StandHud({ name, live, analysis, base }: { name: string; live: boolean; analysis: { profile: Float32Array; heightKm: number }; base: { lat: number; lon: number } }) {
+  const [now, setNow] = useState<SiteNow | null>(null)
+  useEffect(() => {
+    const tick = () => setNow(siteNow(analysis.profile, base.lat, base.lon, analysis.heightKm, frame.timeMs))
+    tick()
+    const id = setInterval(tick, 200)
+    return () => clearInterval(id)
+  }, [analysis, base])
+  return (
+    <div className="stand-hud">
+      <strong>{name}</strong>
+      <p>
+        {live && <span className="live">LIVE</span>} {fmtUtc(frame.timeMs, true).replace(/^\w+, /, '')}
+      </p>
+      {now && (
+        <>
+          <p>
+            Sun {now.sky.sunElev.toFixed(2)}° · {now.sunVisible > 0.99 ? 'In sunlight' : now.sunVisible < 0.01 ? 'In shadow' : `${Math.round(now.sunVisible * 100)}% visible`}
+          </p>
+          <p>
+            Earth {now.sky.earthElev.toFixed(2)}° · {now.earthVisible >= 0.5 ? 'In view' : 'Hidden'}, {Math.round(now.sky.earthLit * 100)}% lit
+          </p>
+          <p>
+            Link {now.linkOpen ? 'open' : 'closed'} · Power {now.powerPct}%
+          </p>
+        </>
+      )}
+      <p className="eye">Eye height {(EYE_KM * 1000).toFixed(1)} m</p>
+    </div>
+  )
+}
+
 export default function SimApp() {
   const [assets, setAssets] = useState<SimAssets | null>(null)
   const [bytes, setBytes] = useState({ l: 0, t: 0 })
@@ -134,10 +173,18 @@ export default function SimApp() {
     [analysis, base, startDay],
   )
 
+  // The panel shows these values rounded; only re-render it when one of the shown values changes.
   const [now, setNow] = useState<SiteNow | null>(null)
   useEffect(() => {
     if (!analysis || !base) return
-    const tick = () => setNow(siteNow(analysis.profile, base.lat, base.lon, analysis.heightKm, frame.timeMs))
+    let key = ''
+    const tick = () => {
+      const n = siteNow(analysis.profile, base.lat, base.lon, analysis.heightKm, frame.timeMs)
+      const k = shownKey(n)
+      if (k === key) return
+      key = k
+      setNow(n)
+    }
     tick()
     const id = setInterval(tick, 200)
     return () => clearInterval(id)
@@ -211,28 +258,7 @@ export default function SimApp() {
             {hover.text}
           </div>
         )}
-        {view === 'stand' && current && (
-          <div className="stand-hud">
-            <strong>{current.name}</strong>
-            <p>
-              {live && <span className="live">LIVE</span>} {fmtUtc(frame.timeMs, true).replace(/^\w+, /, '')}
-            </p>
-            {now && (
-              <>
-                <p>
-                  Sun {now.sky.sunElev.toFixed(2)}° · {now.sunVisible > 0.99 ? 'In sunlight' : now.sunVisible < 0.01 ? 'In shadow' : `${Math.round(now.sunVisible * 100)}% visible`}
-                </p>
-                <p>
-                  Earth {now.sky.earthElev.toFixed(2)}° · {now.earthVisible >= 0.5 ? 'In view' : 'Hidden'}, {Math.round(now.sky.earthLit * 100)}% lit
-                </p>
-                <p>
-                  Link {now.linkOpen ? 'open' : 'closed'} · Power {now.powerPct}%
-                </p>
-              </>
-            )}
-            <p className="eye">Eye height {(EYE_KM * 1000).toFixed(1)} m</p>
-          </div>
-        )}
+        {view === 'stand' && current && analysis && base && <StandHud name={current.name} live={live} analysis={analysis} base={base} />}
         {view === 'stand' && (
           <div className="look-pad">
             <button aria-label="Look up" className="up" onClick={() => nudgeLook(0, 6)}>

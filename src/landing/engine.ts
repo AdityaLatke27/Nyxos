@@ -42,6 +42,8 @@ export interface TerrainLike {
   horizonProfile(lat: number, lon: number, n?: number, eyeKm?: number, steps?: number): Float32Array
   heightAtLatLon(lat: number, lon: number): number
   resolutionKmAt(lat: number, lon: number): number
+  /** identifies the terrain data currently in use; equal keys mean equal heights (enables result reuse) */
+  cacheKey?(): string
 }
 
 const STEP_MIN = 30
@@ -61,17 +63,25 @@ export interface Timeline {
   fracAt?: (ms: number) => { sun: number; earth: number }
 }
 
-/** Sun and Earth visibility (fraction of each disc above the terrain horizon) every 30 min. */
-export function buildTimeline(profile: Float32Array, lat: number, lon: number, hKm: number, startMs: number, days: number): Timeline {
+/** Sun and Earth positions in the site's sky every 30 min. They do not depend on the terrain horizon, so one track serves every horizon what-if. */
+export interface Track {
+  startMs: number
+  stepMs: number
+  n: number
+  /** sun elevation, azimuth; Earth elevation, azimuth, angular radius (degrees); float64 so results match a direct evaluation exactly */
+  se: Float64Array
+  sa: Float64Array
+  ee: Float64Array
+  ea: Float64Array
+  er: Float64Array
+  /** the same quantities at any instant */
+  at: (ms: number) => { se: number; sa: number; ee: number; ea: number; er: number }
+}
+
+export function buildTrack(lat: number, lon: number, hKm: number, startMs: number, days: number): Track {
   const stepMs = STEP_MIN * 60000
   const n = Math.round((days * DAY) / stepMs) + 1
   const f = siteFrame(lat, lon)
-  const sunFrac = new Float32Array(n)
-  const earthFrac = new Float32Array(n)
-  const sunElev = new Float32Array(n)
-  const earthElev = new Float32Array(n)
-  const sunAz = new Float32Array(n)
-  const earthAz = new Float32Array(n)
   const DEGR = 180 / Math.PI
   const r = 1737.4 + hKm
   const at = (ms: number) => {
@@ -88,23 +98,42 @@ export function buildTimeline(profile: Float32Array, lat: number, lon: number, h
     }
     const [se, sa] = dir(s.sunDir)
     const [ee, ea] = dir([ex / el, ey / el, ez / el])
-    return {
-      se, sa, ee, ea,
-      sun: discAbove(se, horizonAt(profile, sa), SUN_RADIUS_DEG),
-      earth: discAbove(ee, horizonAt(profile, ea), (Math.asin(6371 / el) * DEGR)),
-    }
+    return { se, sa, ee, ea, er: Math.asin(6371 / el) * DEGR }
   }
+  const se = new Float64Array(n), sa = new Float64Array(n), ee = new Float64Array(n), ea = new Float64Array(n), er = new Float64Array(n)
   for (let i = 0; i < n; i++) {
     const v = at(startMs + i * stepMs)
-    sunElev[i] = v.se
-    earthElev[i] = v.ee
-    sunAz[i] = v.sa
-    earthAz[i] = v.ea
-    sunFrac[i] = v.sun
-    earthFrac[i] = v.earth
+    se[i] = v.se; sa[i] = v.sa; ee[i] = v.ee; ea[i] = v.ea; er[i] = v.er
   }
-  const fracAt = (ms: number) => { const v = at(ms); return { sun: v.sun, earth: v.earth } }
-  return { startMs, stepMs, n, sunFrac, earthFrac, sunElev, earthElev, sunAz, earthAz, fracAt }
+  return { startMs, stepMs, n, se, sa, ee, ea, er, at }
+}
+
+/** Disc fractions above a horizon profile for the first `n` samples of a track (n defaults to the whole track). */
+export function timelineFromTrack(track: Track, profile: Float32Array, n = track.n): Timeline {
+  const sunFrac = new Float32Array(n)
+  const earthFrac = new Float32Array(n)
+  const sunElev = new Float32Array(n)
+  const earthElev = new Float32Array(n)
+  const sunAz = new Float32Array(n)
+  const earthAz = new Float32Array(n)
+  for (let i = 0; i < n; i++) {
+    sunElev[i] = track.se[i]
+    earthElev[i] = track.ee[i]
+    sunAz[i] = track.sa[i]
+    earthAz[i] = track.ea[i]
+    sunFrac[i] = discAbove(track.se[i], horizonAt(profile, track.sa[i]), SUN_RADIUS_DEG)
+    earthFrac[i] = discAbove(track.ee[i], horizonAt(profile, track.ea[i]), track.er[i])
+  }
+  const fracAt = (ms: number) => {
+    const v = track.at(ms)
+    return { sun: discAbove(v.se, horizonAt(profile, v.sa), SUN_RADIUS_DEG), earth: discAbove(v.ee, horizonAt(profile, v.ea), v.er) }
+  }
+  return { startMs: track.startMs, stepMs: track.stepMs, n, sunFrac, earthFrac, sunElev, earthElev, sunAz, earthAz, fracAt }
+}
+
+/** Sun and Earth visibility (fraction of each disc above the terrain horizon) every 30 min. */
+export function buildTimeline(profile: Float32Array, lat: number, lon: number, hKm: number, startMs: number, days: number): Timeline {
+  return timelineFromTrack(buildTrack(lat, lon, hKm, startMs, days), profile)
 }
 
 /**
@@ -363,14 +392,32 @@ export interface EvalInput {
   craters?: CraterData | null
 }
 
+interface SiteCore { horizon: Float32Array; track: Track; tl: Timeline }
+const coreCache = new Map<string, SiteCore>()
+/** Horizon, sky track and year timeline for one site and start time; reused while only the lander, stay or link inputs change. */
+function siteCore(terrain: TerrainLike, lat: number, lon: number, hKm: number, startMs: number, scan: number): SiteCore {
+  const tk = terrain.cacheKey?.()
+  const eph = `${ephemerisSource(new Date(startMs))}|${ephemerisSource(new Date(startMs + scan * DAY))}`
+  const key = tk === undefined ? null : `${tk}|${lat}|${lon}|${hKm}|${startMs}|${scan}|${eph}`
+  const hit = key ? coreCache.get(key) : undefined
+  if (hit) { coreCache.delete(key!); coreCache.set(key!, hit); return hit }
+  const horizon = terrain.horizonProfile(lat, lon)
+  const track = buildTrack(lat, lon, hKm, startMs, scan)
+  const core = { horizon, track, tl: timelineFromTrack(track, horizon) }
+  if (key) {
+    coreCache.set(key, core)
+    if (coreCache.size > 8) coreCache.delete(coreCache.keys().next().value as string)
+  }
+  return core
+}
+
 export function evaluate(inp: EvalInput): Assessment {
   const { lat, lon, startMs, profile, terrain, hazard, lunar } = inp
   const stayDays = profile.stayDays.value
   const hKm = terrain.heightAtLatLon(lat, lon)
   const demM = terrain.resolutionKmAt(lat, lon) * 1000
-  const horizon = terrain.horizonProfile(lat, lon)
   const scan = Math.max(inp.scanDays ?? 365, stayDays + 1)
-  const tl = buildTimeline(horizon, lat, lon, hKm, startMs, scan)
+  const { horizon, track, tl } = siteCore(terrain, lat, lon, hKm, startMs, scan)
   const L = Math.round((stayDays * DAY) / tl.stepMs)
   const stats = windowStats(tl, 0, Math.min(tl.n, L + 1))
   const windows = {
@@ -783,10 +830,12 @@ export function evaluate(inp: EvalInput): Assessment {
   }
 
   // ---- how sure is this: what-if horizon shifts, lit definitions, slope error
+  // the Sun and Earth tracks do not depend on the horizon, so each what-if only re-tests the horizon on the stay's samples
+  const stayN = Math.round((stayDays * DAY) / track.stepMs) + 1
   const stayTl = (off: number) => {
     const hs = new Float32Array(horizon.length)
     for (let i = 0; i < hs.length; i++) hs[i] = horizon[i] + off
-    return buildTimeline(hs, lat, lon, hKm, startMs, stayDays)
+    return timelineFromTrack(track, hs, stayN)
   }
   const sensitivity = computeSensitivity({
     statsAt: (off) => {

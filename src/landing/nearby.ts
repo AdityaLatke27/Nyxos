@@ -73,6 +73,34 @@ export function yearSunDirs(startMs: number) {
  * 6-hourly sample of a model year. This is a model result at the local DEM resolution, a
  * cold-trap *candidate* only: shadow is not proof of ice and temperature is not modelled.
  */
+/** Gives the browser a turn between chunks of work. A message-channel hop avoids the 4 ms floor of nested timeouts. */
+export function yieldToBrowser(): Promise<void> {
+  if (typeof MessageChannel === 'undefined') return new Promise((r) => setTimeout(r, 0))
+  return new Promise((resolve) => {
+    const ch = new MessageChannel()
+    ch.port1.onmessage = () => { ch.port1.close(); resolve() }
+    ch.port2.postMessage(0)
+  })
+}
+
+const cellHorizons = new Map<string, Float32Array>()
+function cellHorizon(terrain: TerrainLike, lat: number, lon: number): Float32Array {
+  const tk = terrain.cacheKey?.()
+  const key = tk === undefined ? null : `${tk}|${lat}|${lon}`
+  const hit = key ? cellHorizons.get(key) : undefined
+  if (hit) return hit
+  const h = terrain.horizonProfile(lat, lon, 360, 0.002, 240)
+  if (key) {
+    cellHorizons.set(key, h)
+    if (cellHorizons.size > 400) cellHorizons.delete(cellHorizons.keys().next().value as string)
+  }
+  return h
+}
+
+/**
+ * `cancelled` is checked after every grid cell; a cancelled scan resolves to null and never reports a partial result.
+ * Horizons per cell are reused, so changing only the start date re-tests the Sun without re-tracing the terrain.
+ */
 export async function shadowScan(
   terrain: TerrainLike,
   lat: number,
@@ -80,8 +108,9 @@ export async function shadowScan(
   sunDirs: Float32Array,
   radiusKm = 4,
   grid = 9,
-  yieldFn: () => Promise<void> = () => new Promise((r) => setTimeout(r, 0)),
-): Promise<ShadowScan> {
+  yieldFn: () => Promise<void> = yieldToBrowser,
+  cancelled: () => boolean = () => false,
+): Promise<ShadowScan | null> {
   const cells: ShadowCell[] = []
   const nT = sunDirs.length / 3
   for (let gj = 0; gj < grid; gj++) {
@@ -90,7 +119,7 @@ export async function shadowScan(
       const dy = ((gj / (grid - 1)) * 2 - 1) * radiusKm
       if (Math.hypot(dx, dy) > radiusKm) continue
       const p = offsetLatLon({ lat, lon }, dx, dy)
-      const h = terrain.horizonProfile(p.lat, p.lon, 360, 0.002, 240)
+      const h = cellHorizon(terrain, p.lat, p.lon)
       const f = siteFrame(p.lat, p.lon)
       let lit = 0
       for (let t = 0; t < nT; t++) {
@@ -107,8 +136,9 @@ export async function shadowScan(
         if (discAbove(el, hz, SUN_RADIUS_DEG) > 0) lit++
       }
       cells.push({ dxKm: dx, dyKm: dy, litPct: (100 * lit) / nT, persistent: lit === 0 })
+      await yieldFn()
+      if (cancelled()) return null
     }
-    await yieldFn()
   }
   const pers = cells.filter((c) => c.persistent)
   return {

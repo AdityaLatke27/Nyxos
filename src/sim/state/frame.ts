@@ -51,7 +51,8 @@ export function tickClock(dtSec: number) {
   } else {
     runOffset = s.offsetHours
   }
-  if ((s.live || s.playing) && nowMs - lastWrite > 120) {
+  // Live time is shown to the minute, so a once-a-second write is invisible; playback keeps the smoother 120 ms rate.
+  if ((s.live || s.playing) && nowMs - lastWrite > (s.live ? 1000 : 120)) {
     lastWrite = nowMs
     s.set({ offsetHours: runOffset })
   }

@@ -18,20 +18,31 @@ export function useChartCanvas(draw: (g: CanvasRenderingContext2D, w: number, h:
   useEffect(() => {
     const c = ref.current
     if (!c) return
+    let lastW = 0
+    let lastH = 0
     const paint = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       const w = c.clientWidth
       const h = c.clientHeight
       if (!w || !h) return
-      c.width = Math.round(w * dpr)
-      c.height = Math.round(h * dpr)
+      // assigning width/height reallocates the bitmap even when the value is unchanged, so only do it on a real resize
+      const bw = Math.round(w * dpr)
+      const bh = Math.round(h * dpr)
+      if (c.width !== bw) c.width = bw
+      if (c.height !== bh) c.height = bh
+      lastW = w
+      lastH = h
       const g = c.getContext('2d')!
       g.setTransform(dpr, 0, 0, dpr, 0, 0)
       g.clearRect(0, 0, w, h)
       draw(g, w, h)
     }
     paint()
-    const ro = new ResizeObserver(paint)
+    // ResizeObserver reports once on observe(); skip that report when the box has not changed since the paint above
+    const ro = new ResizeObserver(() => {
+      if (c.clientWidth === lastW && c.clientHeight === lastH) return
+      paint()
+    })
     ro.observe(c)
     return () => ro.disconnect()
     // eslint-disable-next-line react-hooks/exhaustive-deps
