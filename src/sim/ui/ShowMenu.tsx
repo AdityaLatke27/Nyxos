@@ -110,7 +110,7 @@ export default function ShowMenu() {
             Terrain: NASA LRO LOLA (20 m–2.7 km) and SLDEM2015 (LOLA + SELENE). Photos: LRO WAC global mosaic,
             NASA/GSFC/Arizona State University, via NASA Moon Trek. Color: LROC WAC. Stars: NASA SVS (Gaia, Hipparcos,
             Tycho). Crater names: IAU / USGS Gazetteer. Earth: Solar System Scope (CC BY 4.0), from NASA imagery.
-            Ephemeris: Meeus + IAU WGCCRE lunar orientation. Power assumes a vertical sun-tracking array.
+            Ephemeris: JPL DE440 for 2026–2035 (Meeus + IAU WGCCRE lunar orientation outside that span or if the table does not load). Power assumes a vertical sun-tracking array.
           </footer>
         </div>
       )}

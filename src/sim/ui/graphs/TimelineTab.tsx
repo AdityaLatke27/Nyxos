@@ -233,7 +233,7 @@ export default function TimelineTab({ terrain, features, point, hasTerrain }: Pr
         `NYXOS sunlight timeline, 30 days from ${new Date(illum.track.startMs).toISOString()}, 30-minute steps`,
         `Selected point ${point.lat.toFixed(5)}, ${point.lon.toFixed(5)}. Sun elevation and azimuth are geometric (no refraction) at that point; azimuth clockwise from north.`,
         'lit_pct: one location = % of the Sun disc (0.2666 deg radius) above the DEM horizon; a group = % of its sampled cells with at least half the disc visible. Direct sunlight only.',
-        'Horizon: 144 azimuths x 170 log-spaced ray steps to 650 km on the LOLA DEM. Sun: Meeus + IAU 2009 orientation (checked against NASA DE440: <=0.01 deg; orientation within 0.05 deg of optical libration).',
+        'Horizon: 144 azimuths x 170 log-spaced ray steps to 650 km on the LOLA DEM. Sun: JPL DE440 for 2026-2035 where the table loads, otherwise Meeus + IAU 2009 orientation (the analytic model agrees with DE440 to <=0.01 deg; orientation within 0.05 deg of optical libration).',
         FRAME_NOTE,
       ],
       ['time_utc', 'sun_elevation_deg', 'sun_azimuth_deg', ...gs.map((g) => `lit_pct[${g.label}; ${g.n} loc]`)],
@@ -289,8 +289,8 @@ export default function TimelineTab({ terrain, features, point, hasTerrain }: Pr
           <p className="gd-stats">
             {cur.label} ({cur.n} {cur.n === 1 ? 'location' : 'locations'}): average {(cur.meanLit * 100).toFixed(0)}% of the area in direct sunlight over the next 30 days{cur.n > 1 ? ` (majority of the area lit ${(ev!.litFraction * 100).toFixed(0)}% of the time)` : ''} · sunrises {ev!.sunrises.length}, sunsets {ev!.sunsets.length} (▲ rise, ▼ set
             {cur.n > 1 ? ', where over half the sampled area is lit' : ''}) · longest darkness {hrs(ev!.longestDark)} · longest daylight {hrs(ev!.longestLight)}. Red shading = darkness of 24 h or more. “≥” means the interval runs past
-            the window. Direct sunlight only: the Sun's disc (0.27° radius) against the DEM horizon; no earthshine, scattering or crater-wall glow. <Chip source="modelled" /> Sun position (Meeus + IAU 2009 orientation) agrees with NASA DE440
-            to 0.01° and with optical libration to 0.05°; near the poles the Sun moves so slowly that this can shift a sunrise or sunset by hours. {FRAME_NOTE}
+            the window. Direct sunlight only: the Sun's disc (0.27° radius) against the DEM horizon; no earthshine, scattering or crater-wall glow. <Chip source="modelled" /> Sun position: JPL DE440 for 2026–2035 where the table loads; otherwise the analytic model (Meeus + IAU 2009 orientation), which agrees with DE440
+            to 0.01° and with optical libration to 0.05°. With the analytic model, near the poles the Sun moves so slowly that this can shift a sunrise or sunset by hours. {FRAME_NOTE}
           </p>
         </>
       )}

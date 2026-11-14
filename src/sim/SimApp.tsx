@@ -4,6 +4,7 @@ import { Bloom, EffectComposer, GodRays, ToneMapping, Vignette } from '@react-th
 import { ToneMappingMode } from 'postprocessing'
 import * as THREE from 'three'
 import { loadSimAssets, loadSiteTerrain } from './data/loadSimAssets'
+import { loadEphemerisTable } from '../astro/ephemerisTable'
 import type { SimAssets, SiteTerrain } from './data/types'
 import { CpuTerrain } from './terrain/cpuTerrain'
 import { useSim } from './state/store'
@@ -120,15 +121,20 @@ export default function SimApp() {
   useEffect(() => {
     let raf = 0
     let pending = { l: 0, t: 0 }
-    loadSimAssets((l, t) => {
-      pending = { l, t }
-      if (!raf)
-        raf = requestAnimationFrame(() => {
-          raf = 0
-          setBytes(pending)
-        })
-    })
-      .then(setAssets)
+    // The DE440 table (2.4 MB) is installed before the first frame so the Sun and Earth positions here agree with the
+    // Landing and Compare pages; if it cannot be fetched the analytic model is used, as before.
+    Promise.all([
+      loadSimAssets((l, t) => {
+        pending = { l, t }
+        if (!raf)
+          raf = requestAnimationFrame(() => {
+            raf = 0
+            setBytes(pending)
+          })
+      }),
+      loadEphemerisTable(),
+    ])
+      .then(([a]) => setAssets(a))
       .catch((e: Error) => setError(e.message))
     return () => cancelAnimationFrame(raf)
   }, [])

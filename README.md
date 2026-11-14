@@ -38,7 +38,7 @@ Known limits:
 - Direct sunlight only: no scattered light and no shadowing by the lander itself.
 - Terrain relief smaller than the data resolution is not modelled.
 - Slope data is finest poleward of 80°S; further out it is coarser and verdicts that depend on it are capped at Warning.
-- The main simulator (`/app`) uses the analytic Sun and Earth model. Landing and Compare use DE440, so values can differ slightly between the pages.
+- DE440 covers 2026–2035. Outside that span every page falls back to the analytic Sun and Earth model, which differs from Horizons by up to 0.26° in azimuth.
 - The power and link inputs are placeholders to be replaced with a spacecraft's own values.
 
 ## Data sources

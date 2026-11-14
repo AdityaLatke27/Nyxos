@@ -18,7 +18,7 @@ import PowerForm from './PowerForm'
 import { DEFAULT_POWER, type PowerInputs } from '../power'
 import { ROBUSTNESS_LABEL } from '../sensitivity'
 import { yieldToBrowser } from '../nearby'
-import { WUELLER_SITES } from '../candidateSites'
+import { MISSION_SITES, WUELLER_SITES } from '../candidateSites'
 import { accessRows, decidingText, nextChangeText, compareCsv, rowDiffers, rowFor, rowList, slipTimes, verdictSummary, type CompareResult, type SiteEntry } from '../compare'
 import { downloadText } from '../report'
 import { STATUS_GLYPH, STATUS_LABEL, fmtLat, fmtLon, fmtUtc } from './format'
@@ -215,6 +215,13 @@ export default function CompareApp() {
                 <option value="">Add a candidate site…</option>
                 {wuellerRegions.map((g) => <optgroup key={g} label={`Region ${g}`}>{WUELLER_SITES.filter((s) => s[1] === g).map((s) => <option key={s[0]} value={s[0]}>{s[0]}</option>)}</optgroup>)}
               </select>
+            </label>
+            <label>Other missions' landing sites
+              <select disabled={full} value="" onChange={(e) => { const m = MISSION_SITES.find((x) => x.id === e.target.value); if (m) add({ id: `m-${m.id}`, name: m.name, lat: m.lat, lon: m.lon }) }}>
+                <option value="">Add a landing site…</option>
+                {MISSION_SITES.map((m) => <option key={m.id} value={m.id}>{m.name} · {m.programme}, {m.year}</option>)}
+              </select>
+              <span className="ld-hint">Outside the polar terrain maps, so the terrain is coarser; each column shows its terrain resolution. Sources are listed in the data sources file.</span>
             </label>
             <label>Search a crater
               <input value={query} disabled={full} onChange={(e) => setQuery(e.target.value)} placeholder="e.g. Haworth" />

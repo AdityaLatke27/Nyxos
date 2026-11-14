@@ -34,6 +34,10 @@ async function waitServer() {
     check('landing: link row', /Direct-to-Earth link margin/.test(text))
     check('landing: sources and limits shown', /Boulders and small craters/.test(text))
 
+    await page.selectOption('label:has-text("Place") select', 'm-ch3')
+    await page.waitForFunction(() => /Chandrayaan-3/.test(document.querySelector('h2')?.parentElement?.innerText || document.body.innerText) && /terrain model is coarse/.test(document.body.innerText), null, { timeout: 300000 })
+    check('landing: other-mission site analysed with a coarse-terrain warning', true)
+    await page.selectOption('label:has-text("Place") select', { index: 1 })
     await page.click('button:has-text("Guided tour")')
     check('tour: opens with live numbers', await page.evaluate(() => /Step 1 of 5/.test(document.body.innerText) && /peaks at -?\d/.test(document.body.innerText)))
     for (let k = 0; k < 4; k++) await page.click('.ld-tour-nav button:has-text("Next")')

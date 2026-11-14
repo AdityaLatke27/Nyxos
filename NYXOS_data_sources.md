@@ -37,6 +37,18 @@ Compiled from the repository (report.tsx, validation.ts, profile.ts, build scrip
 
 Hydrogen is regional context only. Evidence of cold or shadowed ground is not proof of ice.
 
+### Other missions' landing sites (Compare and Landing place lists)
+
+| Site | Position used | Source | Link |
+|---|---|---|---|
+| Chandrayaan-3 (Statio Shiv Shakti), India, 2023 | 69.37°S, 32.32°E (two decimals) | IAU/USGS Gazetteer of Planetary Nomenclature, adopted 19 March 2024 | https://planetarynames.wr.usgs.gov/Feature/16272 |
+| Luna-25 impact crater, Russia, 2023 (a crash) | 57.865°S, 61.360°E | NASA LRO, crater likely from the impact | https://www.nasa.gov/?p=505500 |
+| Chang'e-4, China, 2019 | 45.457°S, 177.589°E, ±20 m | LROC lander coordinates | https://lroc.im-ldi.com/images/1087 |
+| Chang'e-6, China, 2024 | 41.6385°S, 206.0148°E (153.9852°W), ±30 m | LROC computed landing site coordinates | https://lroc.im-ldi.com/images/1374 |
+| SLIM, Japan, 2024 | 13.3160°S, 25.2510°E | NASA LRO observation of the lander | https://www.nasa.gov/missions/lro/nasas-lro-spots-japans-moon-lander |
+
+These sites lie outside the polar terrain maps, so the analysis uses coarser terrain there (about 2.7 km in the tests) and the app states the terrain resolution with each result. Blue Ghost Mission 1 was left out because the sources found give only its target region, not the touchdown point.
+
 ## 4. Terrain used for sunlight and Earth-visibility shadows
 
 | Layer | Source | Link | Resolution |

@@ -21,6 +21,7 @@ import { DEFAULT_LINK, type LinkInputs } from '../linkBudget'
 import LinkForm from './LinkForm'
 import PowerForm from './PowerForm'
 import NeighbourScan from './NeighbourScan'
+import { MISSION_SITES } from '../candidateSites'
 import GuidedTour from './GuidedTour'
 import { DEFAULT_POWER, type PowerInputs } from '../power'
 import PolarPicker from './PolarPicker'
@@ -244,11 +245,12 @@ export default function LandingApp() {
           </div>
           <div className="ld-form">
             <label>Place
-              <select value={candidates.find((s) => s.lat === site.lat && s.lon === site.lon)?.id ?? ''} onChange={(e) => { const s = assets.sites.find((x) => x.id === e.target.value); if (s) pick(s.lat, s.lon, s.name) }}>
+              <select value={candidates.find((s) => s.lat === site.lat && s.lon === site.lon)?.id ?? (() => { const m = MISSION_SITES.find((x) => x.lat === site.lat && x.lon === site.lon); return m ? `m-${m.id}` : '' })()} onChange={(e) => { const m = MISSION_SITES.find((x) => `m-${x.id}` === e.target.value); if (m) { pick(m.lat, m.lon, m.name); return } const s = assets.sites.find((x) => x.id === e.target.value); if (s) pick(s.lat, s.lon, s.name) }}>
                 <option value="">Custom point</option>
                 {['Artemis III region', 'Candidate site', 'Landmark'].map((g) => (
                   <optgroup key={g} label={g}>{candidates.filter((s) => s.group === g).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</optgroup>
                 ))}
+                <optgroup label="Other missions (coarser terrain here)">{MISSION_SITES.map((m) => <option key={m.id} value={`m-${m.id}`}>{m.name} · {m.programme}, {m.year}</option>)}</optgroup>
                 <optgroup label="Apollo (outside HLS envelope)">{assets.sites.filter((s) => s.group === 'Apollo').map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</optgroup>
               </select>
             </label>
