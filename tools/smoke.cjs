@@ -34,6 +34,13 @@ async function waitServer() {
     check('landing: link row', /Direct-to-Earth link margin/.test(text))
     check('landing: sources and limits shown', /Boulders and small craters/.test(text))
 
+    await page.click('button:has-text("Guided tour")')
+    check('tour: opens with live numbers', await page.evaluate(() => /Step 1 of 5/.test(document.body.innerText) && /peaks at -?\d/.test(document.body.innerText)))
+    for (let k = 0; k < 4; k++) await page.click('.ld-tour-nav button:has-text("Next")')
+    check('tour: last step links to Compare', await page.evaluate(() => /Step 5 of 5/.test(document.body.innerText) && !!document.querySelector('.ld-tour-link')))
+    await page.keyboard.press('Escape')
+    check('tour: Escape closes it', await page.evaluate(() => !document.querySelector('.ld-tour')))
+
     await page.goto(`${BASE}/app/compare`, { waitUntil: 'load' })
     await page.waitForFunction(() => document.querySelectorAll('.cmp-table thead th').length >= 3 && !document.querySelector('.cmp-prog'), null, { timeout: 300000 })
     const cols = await page.evaluate(() => document.querySelectorAll('.cmp-table thead th').length - 1)

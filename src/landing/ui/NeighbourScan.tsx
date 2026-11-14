@@ -42,7 +42,7 @@ export default function NeighbourScan({ base, stepKm = 1 }: { base: Omit<EvalInp
     if (id === run.current) setBusy(false)
   }
   return (
-    <section className="ld-sec">
+    <section className="ld-sec" id="ld-neighbours">
       <h2>How fast does the answer change with place?</h2>
       <p className="ld-hint">Same lander, landing time and stay, eight points {stepKm} km around the site. Small moves can change the answer; this shows by how much.</p>
       <button type="button" className="ghost" disabled={busy} onClick={go}>{busy ? 'Checking…' : rows ? 'Check again' : `Check ${stepKm} km around`}</button>

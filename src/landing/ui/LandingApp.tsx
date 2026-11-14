@@ -21,6 +21,7 @@ import { DEFAULT_LINK, type LinkInputs } from '../linkBudget'
 import LinkForm from './LinkForm'
 import PowerForm from './PowerForm'
 import NeighbourScan from './NeighbourScan'
+import GuidedTour from './GuidedTour'
 import { DEFAULT_POWER, type PowerInputs } from '../power'
 import PolarPicker from './PolarPicker'
 import Landing3D, { webglAvailable } from './Landing3D'
@@ -53,7 +54,7 @@ function AccessStrip({ a }: { a: Assessment }) {
     ['Neither Sun nor Earth', fmtSpan(x.longestNeitherH) + (x.neitherClipped && x.longestNeitherH > 0 ? '+' : ''), 'longest, 30 min resolution'],
   ]
   return (
-    <dl className="ld-access" aria-label="Sunlight and Earth access over the stay">
+    <dl id="ld-access" className="ld-access" aria-label="Sunlight and Earth access over the stay">
       {items.map(([k, v, h]) => <div key={k}><dt>{k}</dt><dd>{v}</dd><small>{h}</small></div>)}
       <p className="ld-access-note"><b>From landing:</b> {nextChangeText(a, 'sun')}; {nextChangeText(a, 'earth')}.</p>
       <p className="ld-access-note">{litDefinitionsText(a)}</p>
@@ -220,6 +221,7 @@ export default function LandingApp() {
             <p>Can a lander touch down here, can it stay, and what is nearby worth studying? Each answer shows its limit, source and data resolution.</p>
           </div>
           <div className="ld-actions">
+            <GuidedTour a={a} />
             <button disabled={!ctx} onClick={() => ctx && downloadText(`nyxos-landing-${site.name.replace(/\W+/g, '-')}.html`, buildReport(ctx), 'text/html')}>Download report</button>
             <button className="ghost" disabled={!ctx} onClick={() => { if (!ctx) return; const w = window.open('', '_blank'); if (w) { w.document.write(buildReport(ctx, true)); w.document.close() } }}>Print / save PDF</button>
             <button className="ghost" disabled={!ctx} onClick={() => ctx && downloadText(`nyxos-landing-${site.name.replace(/\W+/g, '-')}.csv`, reportCsv(ctx), 'text/csv')}>CSV</button>
@@ -321,7 +323,7 @@ export default function LandingApp() {
               </div>
             </section>
 
-            <section className="ld-sec">
+            <section className="ld-sec" id="ld-verdicts">
               <h2>Constraints</h2>
               <p className="ld-sub">Gating rows decide Safety and Operations. Rows marked info or not evaluated are shown for transparency and never count as a pass.</p>
               <div className="ld-table" role="table">

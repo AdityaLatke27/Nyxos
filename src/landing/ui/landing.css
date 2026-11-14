@@ -118,3 +118,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .ld-access-note{grid-column:1/-1;margin:0;font-size:13.5px;color:#b4c2d8;line-height:1.45}
 .ld-access-note b{color:#e4ecf8;font-weight:600}
 .cmp-decides{margin:0 0 12px;padding:10px 14px;border-radius:12px;background:var(--glass-bg-strong);border:1px solid var(--glass-border);font-size:14px;color:#cdd9ea}
+
+.ld-tour{position:fixed;right:20px;bottom:20px;z-index:40;width:min(380px,calc(100vw - 32px));padding:16px 18px;border-radius:14px;background:#0a101c;border:1px solid rgba(111,195,255,.45);box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.ld-tour h3{margin:2px 0 8px;font:600 17px 'Space Grotesk',sans-serif;color:#e4ecf8}
+.ld-tour p{margin:0 0 10px;font-size:14px;line-height:1.55;color:#cdd9ea}
+.ld-tour .ld-tour-step{font-size:12.5px;color:#93a3bd;margin-bottom:2px}
+.ld-tour-nav{display:flex;gap:8px;flex-wrap:wrap}
+.ld-tour-link{font:500 14px 'Space Grotesk',sans-serif;padding:8px 14px;border-radius:10px;border:1px solid rgba(111,195,255,.55);background:rgba(111,195,255,.16);color:#e4ecf8;text-decoration:none}
+@media (max-width:760px){.ld-tour{right:16px;left:16px;bottom:16px;width:auto}}
