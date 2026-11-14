@@ -57,6 +57,13 @@ async function waitServer() {
     check('compare dates: base plus slips', dateCols >= 4, `${dateCols} columns`)
     check('compare dates: Earth-in-view row', await page.evaluate(() => /Earth in view/.test(document.body.innerText)))
 
+    await page.goto(`${BASE}/app/history`, { waitUntil: 'load' })
+    await page.waitForSelector('.hs-timeline')
+    check('history: timeline and why-the-pole box', await page.evaluate(() => document.querySelectorAll('.hs-item').length >= 6 && document.querySelectorAll('.hs-why details').length >= 4))
+    check('history: viewer waits for a click', await page.evaluate(() => !document.querySelector('.hs-frame iframe')))
+    await page.click('.hs-chip >> text=Apollo 11')
+    check('history: NASA Eyes frame opens', await page.evaluate(() => /eyes\.nasa\.gov.*1969-07-20/.test(document.querySelector('.hs-frame iframe')?.src ?? '')))
+    check('history: nav has History, no Data item', await page.evaluate(() => /History/.test(document.querySelector('.nav-rail').innerText) && !/Data/.test(document.querySelector('.nav-rail').innerText)))
     check('no page errors', errors.length === 0, errors.slice(0, 2).join(' | '))
   } catch (e) {
     check('smoke run', false, e.message)

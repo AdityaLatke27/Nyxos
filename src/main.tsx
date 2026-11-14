@@ -6,17 +6,23 @@ import App from './App.tsx'
 
 const SimApp = lazy(() => import('./sim/SimApp'))
 const LandingApp = lazy(() => import('./landing/ui/LandingApp'))
+const HistoryApp = lazy(() => import('./history/HistoryApp'))
 const CompareApp = lazy(() => import('./landing/ui/CompareApp'))
 
 void loadEphemerisTable()
 const isSimulator = window.location.pathname.startsWith('/app')
 const isLanding = /^\/app\/landing\/?$/.test(window.location.pathname)
+const isHistory = /^\/app\/history\/?$/.test(window.location.pathname)
 const isCompare = /^\/app\/compare\/?$/.test(window.location.pathname)
 
 // No StrictMode: its double-invoked effects would run the multi-second GPU
 // sunlight bakes twice in development.
 createRoot(document.getElementById('root')!).render(
-  isCompare ? (
+  isHistory ? (
+    <Suspense fallback={null}>
+      <HistoryApp />
+    </Suspense>
+  ) : isCompare ? (
     <Suspense fallback={null}>
       <CompareApp />
     </Suspense>

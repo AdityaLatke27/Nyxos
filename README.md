@@ -11,6 +11,7 @@ Live demo: _add the hosted link here_
 | `/app` Simulator | See the Sun and Earth over real terrain in 3D and from the lander's eye view. Scrub or play time, and read elevation cross-sections, sunlight timelines and an illumination heatmap for any point. |
 | `/app/landing` Landing analysis | Pick a site (or type coordinates), a lander and a landing time. Get the three verdicts, the Sun and Earth timelines against the terrain horizon, the longest dark and Earth-out spells, time to the next sunset and Earthset, windows when a stay can start, nearby shadowed ground and craters, and a downloadable report (HTML, PDF, CSV, JSON). |
 | `/app/compare` Compare | Put up to 6 sites side by side at one landing time, **or** put one site at up to 6 landing dates to see what a schedule slip does. Differences between columns are highlighted and summarised. |
+| `/app/history` History | A plain-language tour of Moon missions for newcomers: NASA's Eyes on the Solar System (time-travel presets from the Nyxos-History repository by Zeus07-go), a timeline with sourced landing positions, links into Landing, and a short "why the poles are different" explainer. |
 
 Also on the Landing and Compare pages:
 - **Power and battery** (informational): editable array, battery and load assumptions; output is computed from the lit fraction of the Sun's disc and its elevation every 30 minutes.
