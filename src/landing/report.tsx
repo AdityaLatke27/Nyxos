@@ -187,6 +187,7 @@ function Report({ c, print }: { c: ReportContext; print: boolean }) {
       <p>{validationSentence()} Test files and scripts are in the repository (tools/validation).</p>
       <h3>Earth visibility</h3>
       <p>The Earth's direction and distance use the same ephemeris. The Earth disc (6371 km radius) is tested against the terrain horizon. This is geometric visibility only; a usable radio link also depends on antenna pointing, power and range. When link assumptions are entered, an informational row applies the standard link equation (Eb/N0 = Ptx + Gtx − free-space loss − losses + G/T + 228.6 − 10 log10 data rate) at the nearest and farthest Earth distance of the stay; the inputs are the user's own, and the row never changes a verdict.</p>
+      <p>When solar array and battery assumptions are entered, a second informational row computes the array output every 30 minutes as peak power × the lit fraction of the Sun's disc × an incidence factor (sine of the Sun's elevation for a flat array, cosine for an upright array that turns to face the Sun, 1 for a two-axis tracker) and runs a battery that starts full against a constant load. The solar constant is held fixed, and dust, temperature and shadowing by the lander itself are not modelled. The inputs are the user's own and the row never changes a verdict.</p>
       <h3>Windows</h3>
       <p>For every 30-minute start time in the next year, the stay is checked against the lit (and Earth-visible) series using prefix sums. No interpolation across data gaps.</p>
       <h3>Persistent shadow</h3>

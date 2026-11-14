@@ -10,6 +10,7 @@ import type { LanderProfile } from './profile'
 import { craterContext, type CraterData } from './craters'
 import { lpHydrogenAt, type LpHydrogenData } from './hydrogen'
 import { LINK_SOURCE, linkResult, type LinkInputs } from './linkBudget'
+import { ARRAY_LABEL, POWER_SOURCE, powerResult, type PowerInputs } from './power'
 
 /**
  * Landing assessment. Three separate verdicts (Safety, Operations, Science); never a blended
@@ -390,6 +391,8 @@ export interface EvalInput {
   hydrogen?: LpHydrogenData | null
   /** Robbins crater catalogue, polar subset (null when not loaded) */
   craters?: CraterData | null
+  /** optional solar array and battery assumptions; adds an informational power row */
+  power?: PowerInputs
 }
 
 interface SiteCore { horizon: Float32Array; track: Track; tl: Timeline }
@@ -799,6 +802,20 @@ export function evaluate(inp: EvalInput): Assessment {
       limit: `Margin of at least ${lk.requiredMarginDb} dB above ${lk.requiredEbN0dB} dB Eb/N0`, limitSource: LINK_SOURCE, tag: 'MODEL',
       basis: `${lk.freqGHz} GHz, ${lk.txPowerW} W, ${lk.txGainDbi} dBi, ground G/T ${lk.gOverTdBK} dB/K, ${lk.dataRateKbps} kbps; Earth distance from the Sun/Earth ephemeris used for this analysis`,
       why: res.closesThroughout ? 'the link closes with the stated margin at every Earth distance in the stay, whenever Earth is above the horizon' : res.closesAtAll ? 'the link closes with the stated margin only at the nearer Earth distances in the stay' : 'the link does not close with the stated margin at any Earth distance in the stay',
+      gating: false,
+    })
+  }
+
+  if (inp.power) {
+    const pw = inp.power
+    const r = powerResult(tl, Math.min(tl.n, L + 1), pw)
+    const hrs = (h: number) => fmtH(h)
+    rows.push({
+      id: 'power', label: 'Solar power and battery (your assumptions)', status: 'INFO',
+      value: `${r.meanW.toFixed(0)} W average (${r.meanPctOfPeak.toFixed(0)}% of the ${pw.arrayPeakW} W array peak) against a ${pw.loadW} W load; ${r.survives ? `battery never runs out, lowest charge ${r.minChargePct.toFixed(0)}%` : `load not fully supplied for ${hrs(r.unmetH)}`}`,
+      limit: `Battery (${pw.batteryWh} Wh, carries the load for ${Number.isFinite(r.autonomyH) ? hrs(r.autonomyH) : 'any time'}) must bridge the darkest stretch`, limitSource: POWER_SOURCE, tag: 'MODEL',
+      basis: `${ARRAY_LABEL[pw.arrayType]}; array output = peak x lit fraction of the Sun's disc x incidence factor, every 30 min from ${new Date(startMs).toISOString().slice(0, 16)}Z for ${stayDays} d; battery full at landing; solar constant, dust and self-shadowing not modelled`,
+      why: pw.arrayType === 'flat' && r.meanPctOfPeak < 5 ? 'a flat array collects almost nothing at the pole because the Sun stays within a few degrees of the horizon; an upright or tracking array is the realistic choice here' : r.survives ? 'the battery and array carry the stated load through the stay under these assumptions' : 'under these assumptions the battery is exhausted; add battery, add array area or cut the load',
       gating: false,
     })
   }

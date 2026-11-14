@@ -19,6 +19,8 @@ import { accessSummary, fmtSpan } from '../compare'
 import { buildReport, downloadText, reportCsv, type ReportContext } from '../report'
 import { DEFAULT_LINK, type LinkInputs } from '../linkBudget'
 import LinkForm from './LinkForm'
+import PowerForm from './PowerForm'
+import { DEFAULT_POWER, type PowerInputs } from '../power'
 import PolarPicker from './PolarPicker'
 import Landing3D, { webglAvailable } from './Landing3D'
 import { DARK, HazardMap, HorizonChart, SensitivityChart, ShadowMap, SlopeHistogram, TimelineChart, WindowCalendar } from './Charts'
@@ -90,6 +92,7 @@ export default function LandingApp() {
   const [cust, setCust] = useState({ slope: 10, evaSlope: 20, lit: false, earth: false, polar: false })
   const [stay, setStay] = useState(NASA_HLS.stayDays.value)
   const [link, setLink] = useState<LinkInputs>(DEFAULT_LINK)
+  const [power, setPower] = useState<PowerInputs>(DEFAULT_POWER)
   const [start, setStart] = useState(nextMidnight())
   const [query, setQuery] = useState('')
   const [mode3d, setMode3d] = useState(() => params.get('map') !== '2d' && webglAvailable())
@@ -154,13 +157,13 @@ export default function LandingApp() {
     const id = ++runId.current
     const timer = setTimeout(() => {
       if (id !== runId.current) return
-      const res = evaluate({ lat: site.lat, lon: site.lon, startMs: start, profile, terrain, hazard, lunar, link, hydrogen, craters })
+      const res = evaluate({ lat: site.lat, lon: site.lon, startMs: start, profile, terrain, hazard, lunar, link, power, hydrogen, craters })
       setA(res)
       setBusy(false)
     }, 150)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [terrain, readyKey, siteKey, hazard, lunar, hydrogen, craters, site, profile, start, link])
+  }, [terrain, readyKey, siteKey, hazard, lunar, hydrogen, craters, site, profile, start, link, power])
 
   // 3. Persistent-shadow scan: depends only on the site and the start time, and stops as soon as either changes.
   useEffect(() => {
@@ -273,6 +276,7 @@ export default function LandingApp() {
               <label>Stay (days)<input type="number" min={1} max={30} step={0.5} value={stay} onChange={(e) => setStay(Math.max(1, Math.min(30, +e.target.value || 1)))} /></label>
             </div>
             <LinkForm value={link} onChange={setLink} />
+            <PowerForm value={power} onChange={setPower} />
             <p className="ld-hint">Stay default is an assumption for Artemis III and can be changed. {hazardNote}.</p>
           </div>
         </section>

@@ -14,6 +14,8 @@ import { loadEphemerisTable } from '../../astro/ephemerisTable'
 import { NASA_HLS } from '../profile'
 import { DEFAULT_LINK, type LinkInputs } from '../linkBudget'
 import LinkForm from './LinkForm'
+import PowerForm from './PowerForm'
+import { DEFAULT_POWER, type PowerInputs } from '../power'
 import { ROBUSTNESS_LABEL } from '../sensitivity'
 import { yieldToBrowser } from '../nearby'
 import { WUELLER_SITES } from '../candidateSites'
@@ -64,6 +66,7 @@ export default function CompareApp() {
   const [picked, setPicked] = useState<SiteEntry[]>([])
   const [start, setStart] = useState(nextMidnight())
   const [link, setLink] = useState<LinkInputs>(DEFAULT_LINK)
+  const [power, setPower] = useState<PowerInputs>(DEFAULT_POWER)
   const [stay, setStay] = useState(NASA_HLS.stayDays.value)
   const [onlyDiff, setOnlyDiff] = useState(false)
   const [mode, setMode] = useState<'sites' | 'dates'>('sites')
@@ -125,7 +128,7 @@ export default function CompareApp() {
           }
           await yieldToBrowser()
           if (id !== runId.current) return
-          const a = evaluate({ lat: entry.lat, lon: entry.lon, startMs, profile, terrain, hazard, lunar, link, hydrogen, craters })
+          const a = evaluate({ lat: entry.lat, lon: entry.lon, startMs, profile, terrain, hazard, lunar, link, power, hydrogen, craters })
           out.push({ entry, a, startMs, slipDays })
         } catch (e) {
           out.push({ entry, a: null, error: (e as Error).message, startMs, slipDays })
@@ -137,7 +140,7 @@ export default function CompareApp() {
       if (id === runId.current) setProgress(null)
     }, 300)
     return () => clearTimeout(handle)
-  }, [terrain, assets, hazard, lunar, hydrogen, craters, ready, jobs, profile, link])
+  }, [terrain, assets, hazard, lunar, hydrogen, craters, ready, jobs, profile, link, power])
 
   if (error) return <div className="ld-root"><NavRail active="compare" /><p className="ld-error">{error}</p></div>
   if (!assets) return <Loader stage="download" downloaded={bytes.l} total={bytes.t} bake={0} error={null} />
@@ -197,6 +200,7 @@ export default function CompareApp() {
               </div>
             )}
             <LinkForm value={link} onChange={setLink} />
+            <PowerForm value={power} onChange={setPower} />
             <p className="ld-hint">Lander: {NASA_HLS.name}. Stay default is an assumption for Artemis III and can be changed.</p>
           </div>
           <div className="cmp-add">

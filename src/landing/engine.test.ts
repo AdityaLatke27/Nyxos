@@ -302,6 +302,39 @@ describe('access summary and date scenarios', () => {
   })
 })
 
+import { incidenceFactor, powerResult } from './power'
+describe('power model', () => {
+  const tl = (sun: number[], elev: number[]) => ({ stepMs: 1800000, sunFrac: Float32Array.from(sun), sunElev: Float32Array.from(elev) })
+  it('incidence factors follow the array geometry', () => {
+    expect(incidenceFactor('flat', 30)).toBeCloseTo(0.5, 6)
+    expect(incidenceFactor('vertical', 60)).toBeCloseTo(0.5, 6)
+    expect(incidenceFactor('tracking', 1)).toBe(1)
+    expect(incidenceFactor('flat', -2)).toBe(0)
+    expect(incidenceFactor('tracking', -2)).toBe(0)
+  })
+  it('a low Sun gives a flat array almost nothing and an upright array almost everything', () => {
+    const t = tl([1, 1, 1, 1], [1.5, 1.5, 1.5, 1.5])
+    const base = { arrayPeakW: 1000, batteryWh: 100, loadW: 0 }
+    expect(powerResult(t, 4, { ...base, arrayType: 'flat' }).meanPctOfPeak).toBeLessThan(3)
+    expect(powerResult(t, 4, { ...base, arrayType: 'vertical' }).meanPctOfPeak).toBeGreaterThan(99.9)
+  })
+  it('a battery that runs out reports the hours it could not supply the load', () => {
+    // 2 h of darkness, 100 W load, 100 Wh battery: 50 Wh per half hour, empty after 1 h, short for the last 1 h
+    const r = powerResult(tl([0, 0, 0, 0], [-5, -5, -5, -5]), 4, { arrayType: 'tracking', arrayPeakW: 500, batteryWh: 100, loadW: 100 })
+    expect(r.unmetH).toBeCloseTo(1, 6)
+    expect(r.survives).toBe(false)
+    expect(r.minChargePct).toBe(0)
+    expect(r.autonomyH).toBeCloseTo(1, 6)
+  })
+  it('a battery that exactly covers the dark spell survives, and sunlight recharges it', () => {
+    const r = powerResult(tl([0, 0, 1, 1], [-5, -5, 30, 30]), 4, { arrayType: 'tracking', arrayPeakW: 500, batteryWh: 100, loadW: 100 })
+    expect(r.survives).toBe(true)
+    expect(r.minChargePct).toBeCloseTo(0, 6)
+    expect(r.generatedWh).toBeCloseTo(500, 6)
+    expect(r.neededWh).toBeCloseTo(200, 6)
+  })
+})
+
 import { DEFAULT_LINK, fspl, linkMarginDb, linkResult } from './linkBudget'
 describe('link budget', () => {
   it('free-space path loss matches the textbook value (2.2 GHz at 384 400 km is about 210.9 dB)', () => {
