@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import NavRail from '../ui/nav/NavRail'
 import '../landing/ui/landing.css'
 import './history.css'
-import { COUNTRY_COLOR, FAST_FACTS, KIND_LABEL, MISSIONS, QUIZ, craterHref, landingHref, placeOf, type Kind, type Mission, type Place } from './data'
+import { COUNTRY_COLOR, FAST_FACTS, INFO, KIND_LABEL, MISSIONS, QUIZ, craterHref, eyesUrl, landingHref, placeOf, type Kind, type Mission, type Place } from './data'
 
 interface SiteRow { id: string; lat: number; lon: number }
 const YEARS = { min: 1959, max: 2026 }
@@ -17,7 +17,9 @@ export default function HistoryApp() {
   const [year, setYear] = useState(YEARS.max)
   const [filter, setFilter] = useState<Filter>('all')
   const [sel, setSel] = useState<string>('apollo11')
-  const detail = useRef<HTMLDivElement>(null)
+  const [open, setOpen] = useState<string | null>(null)
+  const [eyesFor, setEyesFor] = useState<string | null>(null)
+  const [eyesLoaded, setEyesLoaded] = useState(false)
 
   useEffect(() => {
     fetch('/sim/sites.json').then((r) => r.json()).then((d: SiteRow[]) => setSites(d)).catch(() => setSites([]))
@@ -25,13 +27,22 @@ export default function HistoryApp() {
 
   const placed = useMemo(() => MISSIONS.map((m) => ({ m, p: placeOf(m, sites) })), [sites])
   const visible = placed.filter(({ m }) => m.year <= year && (filter === 'all' || m.kind === filter))
-  const current = MISSIONS.find((m) => m.id === sel) ?? MISSIONS[0]
-  const currentPlace = placed.find((x) => x.m.id === current.id)?.p ?? null
   const mapDots = placed.filter((x): x is { m: Mission; p: Place } => !!x.p && x.m.year <= year)
+  const selected = MISSIONS.find((m) => m.id === sel)
 
-  const choose = (id: string, scroll = false) => {
+  const toggle = (id: string) => {
     setSel(id)
-    if (scroll) detail.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setOpen((o) => (o === id ? null : id))
+  }
+  const fromMap = (id: string) => {
+    setSel(id)
+    setOpen(id)
+    setFilter('all')
+    setTimeout(() => document.getElementById(`hs-m-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60)
+  }
+  const launchEyes = (id: string) => {
+    setEyesLoaded(false)
+    setEyesFor(id)
   }
 
   return (
@@ -41,7 +52,7 @@ export default function HistoryApp() {
         <header className="ld-head">
           <div>
             <h1>Moon history</h1>
-            <p>How people and robots reached the Moon, and where they landed. Slide through the years, tap a dot on the Moon, and then go and look at the real landing spot.</p>
+            <p>How people and robots reached the Moon. Slide through the years, tap a dot on the Moon or a mission below, and open it to see the facts and fly to it in NASA's 3D viewer.</p>
           </div>
         </header>
 
@@ -73,39 +84,21 @@ export default function HistoryApp() {
               <text x="12" y={my(0) - 6} className="hs-lbl">Equator</text>
               <text x="12" y={MAP_H - 10} className="hs-lbl">South pole is the bottom edge</text>
               {mapDots.map(({ m, p }) => (
-                <g key={m.id} className={`hs-dot${sel === m.id ? ' on' : ''}`} transform={`translate(${mx(p.lon)} ${my(p.lat)})`} tabIndex={0} role="button" aria-label={`${m.title}, ${m.date}`} onClick={() => choose(m.id)} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), choose(m.id))}>
+                <g key={m.id} className={`hs-dot${sel === m.id ? ' on' : ''}`} transform={`translate(${mx(p.lon)} ${my(p.lat)})`} tabIndex={0} role="button" aria-label={`${m.title}, ${m.date}. Open its details`} onClick={() => fromMap(m.id)} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), fromMap(m.id))}>
                   <circle r="14" fill="transparent" />
                   <circle r={sel === m.id ? 8 : 5.5} fill={COUNTRY_COLOR[m.country]} stroke="#060a14" strokeWidth="2" />
                 </g>
               ))}
             </svg>
-            <p className="ld-hint">Left to right goes west to east around the Moon, and the bottom edge is the south pole. Dots appear only for landings whose position we have from a published source.</p>
-          </div>
-
-          <div className="hs-detail" ref={detail} aria-live="polite">
-            <div className="hs-dhead">
-              <span className="hs-tag" style={{ borderColor: COUNTRY_COLOR[current.country], color: COUNTRY_COLOR[current.country] }}>{current.country}</span>
-              <span className="hs-date">{current.date}</span>
-            </div>
-            <h3>{current.title}</h3>
-            <p className="hs-story">{current.story}</p>
-            <p className="hs-fact"><b>Did you know?</b> {current.fact}</p>
-            {currentPlace ? (
-              <>
-                <p className="hs-pos">Landing spot: {Math.abs(currentPlace.lat).toFixed(2)}°{currentPlace.lat < 0 ? 'S' : 'N'}, {Math.abs(currentPlace.lon).toFixed(2)}°{currentPlace.lon < 0 ? 'W' : 'E'}. Source: {currentPlace.note}.</p>
-                <div className="ld-actions">
-                  <a className="hs-btn" href={craterHref(current, currentPlace)}>See where it landed</a>
-                  <a className="hs-btn ghost" href={landingHref(current, currentPlace)}>Is the Sun up there?</a>
-                </div>
-              </>
-            ) : (
-              <p className="hs-pos">We do not have a published landing position for this one, so it is not on the map.</p>
-            )}
+            <p className="ld-hint" aria-live="polite">
+              {selected ? `Selected: ${selected.title}. ` : ''}Left to right goes west to east around the Moon, and the bottom edge is the south pole. Dots appear only for landings whose position we have from a published source.
+            </p>
           </div>
         </section>
 
         <section className="ld-sec" aria-labelledby="hs-story">
           <h2 id="hs-story">The story, mission by mission</h2>
+          <p className="ld-sub">Tap a mission to open it.</p>
           <div className="hs-chips" role="group" aria-label="Show missions of one kind">
             {(['all', 'crew', 'robot', 'water', 'today'] as Filter[]).map((f) => (
               <button key={f} className={`hs-chip${filter === f ? ' on' : ''}`} aria-pressed={filter === f} onClick={() => setFilter(f)}>{f === 'all' ? 'Everything' : KIND_LABEL[f]}</button>
@@ -113,31 +106,60 @@ export default function HistoryApp() {
           </div>
           {visible.length === 0 && <p className="ld-sub">Nothing here yet. Slide the time machine forward.</p>}
           <ol className="hs-timeline">
-            {visible.map(({ m, p }) => (
-              <li key={m.id} className={`hs-item${sel === m.id ? ' on' : ''}`}>
-                <div className="hs-year">{m.year}</div>
-                <div className="hs-card">
-                  <h3>{m.title}</h3>
-                  <p className="hs-story">{m.story}</p>
-                  <div className="ld-actions">
-                    {p ? (
-                      <>
-                        <a className="hs-btn" href={craterHref(m, p)}>See where it landed</a>
-                        <button className="ghost" onClick={() => choose(m.id, true)}>Show on the map</button>
-                      </>
-                    ) : (
-                      <button className="ghost" onClick={() => choose(m.id, true)}>Read the fun fact</button>
-                    )}
+            {visible.map(({ m, p }) => {
+              const info = INFO[m.id]
+              const isOpen = open === m.id
+              return (
+                <li key={m.id} id={`hs-m-${m.id}`} className={`hs-item${isOpen ? ' open' : ''}${sel === m.id ? ' on' : ''}`}>
+                  <div className="hs-year">{m.year}</div>
+                  <div className="hs-card">
+                    <button className="hs-head" aria-expanded={isOpen} aria-controls={`hs-p-${m.id}`} onClick={() => toggle(m.id)}>
+                      <span className="hs-dotc" style={{ background: COUNTRY_COLOR[m.country] }} aria-hidden="true" />
+                      <span className="hs-htext">
+                        <span className="hs-title">{m.title}</span>
+                        <span className="hs-meta">{m.country} · {m.date}</span>
+                      </span>
+                      <span className="hs-chev" aria-hidden="true">▾</span>
+                    </button>
+                    <div id={`hs-p-${m.id}`} className="hs-panel" hidden={!isOpen}>
+                      <p className="hs-story">{m.story}</p>
+                      {info && (
+                        <dl className="hs-grid">
+                          <div><dt>Launched</dt><dd>{info.launched}</dd></div>
+                          <div><dt>Arrived</dt><dd>{info.arrived}</dd></div>
+                          <div className="wide"><dt>Purpose</dt><dd>{info.purpose}</dd></div>
+                          <div className="wide"><dt>How it went</dt><dd>{info.result}</dd></div>
+                          {info.parts && <div className="wide"><dt>Who and what</dt><dd>{info.parts}</dd></div>}
+                          {info.place && <div className="wide"><dt>Where</dt><dd>{info.place}</dd></div>}
+                        </dl>
+                      )}
+                      <p className="hs-fact"><b>Did you know?</b> {m.fact}</p>
+                      {p && <p className="hs-pos">Landing spot: {Math.abs(p.lat).toFixed(2)}°{p.lat < 0 ? 'S' : 'N'}, {Math.abs(p.lon).toFixed(2)}°{p.lon < 0 ? 'W' : 'E'}. Source: {p.note}.</p>}
+                      <div className="ld-actions">
+                        {info && eyesFor !== m.id && <button className="hs-btn" onClick={() => launchEyes(m.id)}>Fly there in NASA Eyes</button>}
+                        {p && <a className="hs-btn ghost" href={craterHref(m, p)}>See where it landed</a>}
+                        {p && <a className="hs-btn ghost" href={landingHref(m, p)}>Is the Sun up there?</a>}
+                      </div>
+                      {info && eyesFor === m.id && (
+                        <div className="hs-eyes">
+                          <div className="hs-frame">
+                            <iframe title={`NASA Eyes: ${m.title}`} src={eyesUrl(info.eyes)} allow="accelerometer; fullscreen" allowFullScreen onLoad={() => setEyesLoaded(true)} />
+                            {!eyesLoaded && <div className="hs-note">Loading NASA's 3D viewer…</div>}
+                          </div>
+                          <p className="ld-hint">NASA's Eyes on the Solar System, set to the Moon at this mission's moment. Drag to look around and scroll to zoom. Spacecraft models appear only where NASA's viewer has them. <a href={eyesUrl(info.eyes)} target="_blank" rel="noreferrer">Open it full screen</a>. <button className="hs-linkbtn" onClick={() => setEyesFor(null)}>Close the viewer</button></p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </li>
-            ))}
+                </li>
+              )
+            })}
           </ol>
         </section>
 
         <Quiz />
 
-        <p className="ld-hint hs-foot">Dates are the public mission dates from the space agencies and companies involved. Landing positions are published ones; the sources are shown with each. The Moon's south pole is covered in more detail on the Landing and Compare pages.</p>
+        <p className="ld-hint hs-foot">Dates are the public mission dates from the space agencies and companies involved. Landing positions are published ones; the sources are shown with each. The 3D viewer is NASA's Eyes on the Solar System. The Moon's south pole is covered in more detail on the Landing and Compare pages.</p>
       </main>
     </div>
   )

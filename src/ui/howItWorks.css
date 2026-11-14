@@ -1,0 +1,15 @@
+.hiw-back{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:16px;background:rgba(3,6,14,.74);overflow:auto}
+.hiw-card{position:relative;width:min(640px,100%);background:#0a101c;border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:26px 26px 22px;color:#e4ecf8;font-family:'Space Grotesk',sans-serif;box-shadow:0 24px 80px rgba(0,0,0,.6)}
+.hiw-card h2{margin:0 0 6px;font-size:24px}
+.hiw-lead{margin:0 0 16px;color:#aebbd0;line-height:1.5}
+.hiw-x{position:absolute;top:12px;right:14px;width:36px;height:36px;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:transparent;color:#e4ecf8;font-size:22px;line-height:1;cursor:pointer}
+.hiw-x:hover{background:rgba(255,255,255,.08)}
+.hiw-steps{margin:0;padding:0;list-style:none;counter-reset:s;display:flex;flex-direction:column;gap:12px}
+.hiw-steps li{counter-increment:s;display:grid;grid-template-columns:34px 1fr;gap:2px 12px}
+.hiw-steps li::before{content:counter(s);grid-row:span 2;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:rgba(111,195,255,.16);border:1px solid rgba(111,195,255,.5);color:#8fd0ff;font-weight:600}
+.hiw-steps b{font-size:16px}
+.hiw-steps span{color:#cdd9ea;line-height:1.5;font-size:14.5px}
+.hiw-links{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 12px}
+.hiw-links a{padding:9px 14px;border-radius:12px;border:1px solid rgba(111,195,255,.5);background:rgba(111,195,255,.14);color:#e4ecf8;text-decoration:none;font-size:14.5px}
+.hiw-links a:hover{background:rgba(111,195,255,.28)}
+.hiw-note{margin:0;color:#93a3bd;font-size:12.5px;line-height:1.5}

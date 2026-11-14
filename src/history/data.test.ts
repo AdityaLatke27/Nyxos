@@ -1,6 +1,6 @@
 import raw from '../../public/sim/sites.json?raw'
 import { describe, expect, it } from 'vitest'
-import { MISSIONS, QUIZ, craterHref, placeOf } from './data'
+import { INFO, MISSIONS, QUIZ, craterHref, eyesUrl, placeOf } from './data'
 
 const sites = JSON.parse(raw) as { id: string; lat: number; lon: number }[]
 
@@ -24,4 +24,12 @@ describe('history data', () => {
     expect(get('ch3')).toMatch(/^\/app\/\?at=-69\.37,32\.32&view=globe/)
   })
   it('quiz answers are in range', () => { for (const q of QUIZ) expect(q.answer).toBeLessThan(q.options.length) })
+  it('every mission has launch, purpose, result and a NASA Eyes view', () => {
+    for (const m of MISSIONS) {
+      const i = INFO[m.id]
+      expect(i, m.id).toBeDefined()
+      for (const k of ['launched', 'arrived', 'purpose', 'result', 'eyes'] as const) expect(i[k].length, `${m.id}.${k}`).toBeGreaterThan(3)
+      expect(eyesUrl(i.eyes)).toMatch(/^https:\/\/eyes\.nasa\.gov\/apps\/solar-system\/#\/.+logo=false$/)
+    }
+  })
 })
