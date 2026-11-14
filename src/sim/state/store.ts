@@ -93,14 +93,18 @@ interface SimState {
 
 const params = new URLSearchParams(window.location.search)
 const initialSite = params.get('site') ?? 'im2'
+/** ?at=lat,lon opens the simulator with that point picked (used by the History page for sites outside the site list) */
+const atParam = (params.get('at') ?? '').split(',').map(Number)
+const initialPicked: PickedPoint | null =
+  atParam.length === 2 && atParam.every(Number.isFinite) && Math.abs(atParam[0]) <= 90 && Math.abs(atParam[1]) <= 360 ? { lat: atParam[0], lon: atParam[1] } : null
 const urlTime = params.get('t') ? Date.parse(params.get('t')!) : NaN
 const now = Number.isNaN(urlTime) ? Date.now() : urlTime
 const urlView = params.get('view')
 
 export const useSim = create<SimState>((set, get) => ({
-  view: urlView === 'stand' || urlView === 'globe' ? urlView : 'pole',
-  siteId: initialSite,
-  picked: null,
+  view: urlView === 'stand' || urlView === 'globe' || urlView === 'pole' ? urlView : initialPicked && initialPicked.lat > -75 ? 'globe' : 'pole',
+  siteId: initialPicked ? 'picked' : initialSite,
+  picked: initialPicked,
   startDay: utcMidnight(now),
   offsetHours: (now - utcMidnight(now)) / 3.6e6,
   playing: false,
