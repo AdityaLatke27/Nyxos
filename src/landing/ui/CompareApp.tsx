@@ -19,7 +19,7 @@ import { DEFAULT_POWER, type PowerInputs } from '../power'
 import { ROBUSTNESS_LABEL } from '../sensitivity'
 import { yieldToBrowser } from '../nearby'
 import { WUELLER_SITES } from '../candidateSites'
-import { accessRows, compareCsv, rowDiffers, rowFor, rowList, slipTimes, verdictSummary, type CompareResult, type SiteEntry } from '../compare'
+import { accessRows, decidingText, nextChangeText, compareCsv, rowDiffers, rowFor, rowList, slipTimes, verdictSummary, type CompareResult, type SiteEntry } from '../compare'
 import { downloadText } from '../report'
 import { STATUS_GLYPH, STATUS_LABEL, fmtLat, fmtLon, fmtUtc } from './format'
 import './landing.css'
@@ -236,6 +236,7 @@ export default function CompareApp() {
             <div className="cmp-summary" aria-live="polite">
               {verdictSummary(results).map((l) => <p key={l}>{l}</p>)}
             </div>
+            {decidingText(results) && <p className="cmp-decides">{decidingText(results)}</p>}
             <div className="cmp-scroll">
               <table className="cmp-table">
                 <thead>
@@ -253,6 +254,12 @@ export default function CompareApp() {
                     </tr>
                   ))}
                   <tr className="sect"><th colSpan={results.length + 1} scope="colgroup">Sunlight and Earth over the stay</th></tr>
+                  {(['sun', 'earth'] as const).map((w) => (
+                    <tr key={w}>
+                      <th scope="row">{w === 'sun' ? 'Sun from landing' : 'Earth from landing'}<i>time to the first {w === 'sun' ? 'sunset or sunrise' : 'Earthset or Earthrise'}</i></th>
+                      {results.map((r) => <td key={r.entry.id} className="cmp-cell"><span className="val">{r.a ? nextChangeText(r.a, w) : '–'}</span></td>)}
+                    </tr>
+                  ))}
                   {accessRows(results).map((r) => (
                     <tr key={r.label} className={new Set(r.cells).size > 1 ? 'diff' : ''}>
                       <th scope="row">{r.label}<i>{r.hint}</i></th>

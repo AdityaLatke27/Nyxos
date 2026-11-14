@@ -115,3 +115,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .ld-access dd{margin:2px 0;font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;color:#e4ecf8}
 .ld-access small{font-size:12px;color:#93a3bd}
 @media (max-width:900px){.ld-access{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.ld-access-note{grid-column:1/-1;margin:0;font-size:13.5px;color:#b4c2d8;line-height:1.45}
+.ld-access-note b{color:#e4ecf8;font-weight:600}
+.cmp-decides{margin:0 0 12px;padding:10px 14px;border-radius:12px;background:var(--glass-bg-strong);border:1px solid var(--glass-border);font-size:14px;color:#cdd9ea}

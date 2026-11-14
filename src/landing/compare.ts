@@ -1,4 +1,4 @@
-import type { Assessment, Row, Status, Verdict } from './engine'
+import { crossingTime, type Assessment, type Row, type Status, type Verdict } from './engine'
 import { ROBUSTNESS_LABEL } from './sensitivity'
 
 export interface SiteEntry {
@@ -52,6 +52,43 @@ export function accessSummary(a: Assessment): Access {
     darkClipped: a.stats.darkClipped,
     neitherClipped: clipped,
   }
+}
+
+/** What each of Sun and Earth does from the moment of landing: hours until it next rises or sets, to the refined crossing time. */
+export interface NextChange { upNow: boolean; inH: number | null }
+export function nextChange(a: Assessment, which: 'sun' | 'earth'): NextChange {
+  const tl = a.timeline
+  const arr = which === 'sun' ? tl.sunFrac : tl.earthFrac
+  const L = Math.round((a.stayDays * 86400000) / tl.stepMs)
+  const n = Math.min(tl.n, L + 1)
+  const upNow = arr[0] >= 0.5
+  for (let i = 1; i < n; i++) {
+    if (arr[i] >= 0.5 !== upNow) return { upNow, inH: (crossingTime(tl, which, i) - tl.startMs) / 3.6e6 }
+  }
+  return { upNow, inH: null }
+}
+export function nextChangeText(a: Assessment, which: 'sun' | 'earth'): string {
+  const name = which === 'sun' ? 'Sun' : 'Earth'
+  const c = nextChange(a, which)
+  if (c.inH === null) return c.upNow ? `${name} stays up for the whole stay` : `${name} stays below the horizon for the whole stay`
+  return `${name} ${c.upNow ? 'sets' : 'rises'} in ${fmtSpan(Math.max(0, c.inH))}`
+}
+
+/** Sunlit share under the three definitions of "lit", as one line. */
+export function litDefinitionsText(a: Assessment): string {
+  const d = a.sensitivity.litDefinitions
+  return `Sunlit share depends on what counts as lit: any part of the Sun's disc ${d.anyPartPct.toFixed(0)}%, half ${d.halfDiscPct.toFixed(0)}% (used here), the whole disc ${d.wholeDiscPct.toFixed(0)}%.`
+}
+
+/** Labels of the rows whose status differs between columns, and the verdicts that differ, for the "what decides" line. */
+export function decidingText(results: CompareResult[]): string {
+  const ok = results.filter((r) => r.a)
+  if (ok.length < 2) return ''
+  const verdicts = (['safety', 'operations', 'science'] as const).filter((k) => new Set(ok.map((r) => r.a![k].status)).size > 1)
+  const rows = rowList(ok).filter((r) => rowDiffers(ok, r.id)).map((r) => r.label)
+  if (!verdicts.length && !rows.length) return 'No status differs between these columns. Compare the numbers in the sunlight and Earth section.'
+  const v = verdicts.length ? `The ${verdicts.join(', ')} verdict${verdicts.length > 1 ? 's' : ''} differ${verdicts.length > 1 ? '' : 's'}. ` : 'The three verdicts are the same. '
+  return `${v}Rows that differ: ${rows.join('; ') || 'none'}.`
 }
 
 export const fmtSpan = (h: number) => (h >= 48 ? `${(h / 24).toFixed(1)} d` : `${h.toFixed(1)} h`)

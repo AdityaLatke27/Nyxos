@@ -15,11 +15,12 @@ import { evaluate, type Assessment } from '../engine'
 import { loadEphemerisTable } from '../../astro/ephemerisTable'
 import { NASA_HLS, customProfile, type LanderProfile } from '../profile'
 import { INSTRUMENTS, nearbyFeatures, nearbyMissions, shadowScan, yearSunDirs, type ShadowScan } from '../nearby'
-import { accessSummary, fmtSpan } from '../compare'
+import { accessSummary, fmtSpan, litDefinitionsText, nextChangeText } from '../compare'
 import { buildReport, downloadText, reportCsv, type ReportContext } from '../report'
 import { DEFAULT_LINK, type LinkInputs } from '../linkBudget'
 import LinkForm from './LinkForm'
 import PowerForm from './PowerForm'
+import NeighbourScan from './NeighbourScan'
 import { DEFAULT_POWER, type PowerInputs } from '../power'
 import PolarPicker from './PolarPicker'
 import Landing3D, { webglAvailable } from './Landing3D'
@@ -54,6 +55,9 @@ function AccessStrip({ a }: { a: Assessment }) {
   return (
     <dl className="ld-access" aria-label="Sunlight and Earth access over the stay">
       {items.map(([k, v, h]) => <div key={k}><dt>{k}</dt><dd>{v}</dd><small>{h}</small></div>)}
+      <p className="ld-access-note"><b>From landing:</b> {nextChangeText(a, 'sun')}; {nextChangeText(a, 'earth')}.</p>
+      <p className="ld-access-note">{litDefinitionsText(a)}</p>
+      <p className="ld-access-note"><b>{ROBUSTNESS_LABEL[a.sensitivity.level]}.</b> {a.sensitivity.drivers[0] ?? ''}</p>
     </dl>
   )
 }
@@ -352,6 +356,8 @@ export default function LandingApp() {
                   {a.windows.litAndEarth.length ? `First sunlit + Earth-visible start: ${windowLines(a, 'litAndEarth', 1)[0]}` : a.windows.litOnly.length ? `First fully sunlit start: ${windowLines(a, 'litOnly', 1)[0]}. No start keeps Earth in view throughout.` : 'No start time in the next year keeps the surface sunlit for the whole stay.'}</p></figure>
               </div>
             </section>
+
+            {terrain && readyKey === siteKey && <NeighbourScan base={{ lat: site.lat, lon: site.lon, startMs: start, profile, terrain, hazard, lunar }} />}
 
             <section className="ld-sec">
               <h2>What is nearby</h2>

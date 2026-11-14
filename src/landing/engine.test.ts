@@ -239,7 +239,7 @@ describe('exact sunrise and sunset times', () => {
   })
 })
 
-import { accessRows, accessSummary, compareCsv, rowDiffers, rowList, slipTimes, verdictSummary, type CompareResult } from './compare'
+import { accessRows, accessSummary, compareCsv, decidingText, litDefinitionsText, nextChange, nextChangeText, rowDiffers, rowList, slipTimes, verdictSummary, type CompareResult } from './compare'
 describe('site comparison helpers', () => {
   const mk = (name: string, st: 'PASS' | 'FAIL'): CompareResult => ({
     entry: { id: name, name, lat: -89, lon: 0 },
@@ -294,6 +294,34 @@ describe('access summary and date scenarios', () => {
     const rows = accessRows(rs)
     expect(rows).toHaveLength(6)
     expect(rows[0].cells).toEqual(['60.0%', '–'])
+  })
+  it('reports time to the next set or rise from the landing moment', () => {
+    // sun: up, up, down...; earth: up, down...; timeline starts at 0, 30 min steps, no exact evaluator so crossings interpolate
+    const n = 6
+    const b = { stayDays: 5.5 / 48, timeline: { startMs: 0, stepMs: 1800000, n, sunFrac: Float32Array.from([1, 1, 0, 0, 0, 0]), earthFrac: Float32Array.from([0, 0, 0, 0, 0, 0]) } } as never
+    expect(nextChange(b, 'sun').upNow).toBe(true)
+    expect(nextChange(b, 'sun').inH).toBeCloseTo(0.75, 6)
+    expect(nextChange(b, 'earth').inH).toBeNull()
+    expect(nextChangeText(b, 'earth')).toBe('Earth stays below the horizon for the whole stay')
+    expect(nextChangeText(b, 'sun')).toBe('Sun sets in 0.8 h')
+  })
+  it('words the three lit definitions', () => {
+    const t = litDefinitionsText({ sensitivity: { litDefinitions: { anyPartPct: 91, halfDiscPct: 82, wholeDiscPct: 70 } } } as never)
+    expect(t).toContain('any part of the Sun')
+    expect(t).toContain('91%')
+    expect(t).toContain('70%')
+  })
+  it('names what decides between columns, without ranking', () => {
+    const mkc = (name: string, sf: 'PASS' | 'FAIL'): CompareResult => ({
+      entry: { id: name, name, lat: 0, lon: 0 },
+      a: { rows: [{ id: 'sun', label: 'Sunlight during stay', status: sf }, { id: 'slope', label: 'Slope', status: 'PASS' }], safety: { status: 'PASS' }, operations: { status: sf }, science: { status: 'INFO' } } as never,
+    })
+    const txt = decidingText([mkc('A', 'PASS'), mkc('B', 'FAIL')])
+    expect(txt).toContain('operations')
+    expect(txt).toContain('Sunlight during stay')
+    expect(txt).not.toContain('Slope;')
+    expect(decidingText([mkc('A', 'PASS'), mkc('B', 'PASS')])).toMatch(/No status differs/)
+    expect(decidingText([mkc('A', 'PASS')])).toBe('')
   })
   it('slips: always includes the planned date first, drops duplicates and invalid values', () => {
     const t = slipTimes(1000, [7, 7, -3, NaN, 400, 14])
